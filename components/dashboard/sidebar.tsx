@@ -16,6 +16,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/blogs", label: "Blogs", icon: FileText },
   { href: "/orders", label: "Orders", icon: ShoppingCart },
   { href: "/comments", label: "Comments", icon: MessageSquare },
+  { href: "/sms", label: "SMS Management", icon: MessageCircle },
 ];
 
 export function Sidebar() {
