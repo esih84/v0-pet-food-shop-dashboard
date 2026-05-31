@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Product, ProductVariant, ProductAttribute } from '@/lib/data'
+import axiosInstance from '@/lib/auth/axios-instance'
 
 export interface CreateProductInput {
   name: string
@@ -19,10 +20,10 @@ export function useProducts() {
   return useQuery({
     queryKey: ['products'],
     queryFn: async () => {
-      const response = await fetch('/api/products')
-      if (!response.ok) throw new Error('Failed to fetch products')
-      return response.json() as Promise<Product[]>
+      const { data } = await axiosInstance.get<Product[]>('/api/products')
+      return data
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
@@ -31,10 +32,10 @@ export function useProduct(id: string) {
   return useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
-      const response = await fetch(`/api/products/${id}`)
-      if (!response.ok) throw new Error('Failed to fetch product')
-      return response.json() as Promise<Product>
+      const { data } = await axiosInstance.get<Product>(`/api/products/${id}`)
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -42,14 +43,9 @@ export function useProduct(id: string) {
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: CreateProductInput) => {
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to create product')
-      return response.json() as Promise<Product>
+    mutationFn: async (input: CreateProductInput) => {
+      const { data } = await axiosInstance.post<Product>('/api/products', input)
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -58,35 +54,29 @@ export function useCreateProduct() {
 }
 
 // Update product
-export function useUpdateProduct(id: string) {
+export function useUpdateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: UpdateProductInput) => {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to update product')
-      return response.json() as Promise<Product>
+    mutationFn: async ({ id, data }: { id: string; data: UpdateProductInput }) => {
+      const response = await axiosInstance.put<Product>(
+        `/api/products/${id}`,
+        data
+      )
+      return response.data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['product', id] })
+      queryClient.invalidateQueries({ queryKey: ['product', variables.id] })
     },
   })
 }
 
 // Delete product
-export function useDeleteProduct(id: string) {
+export function useDeleteProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) throw new Error('Failed to delete product')
-      return response.json()
+    mutationFn: async (id: string) => {
+      await axiosInstance.delete(`/api/products/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })

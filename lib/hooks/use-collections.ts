@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Collection } from '@/lib/data'
+import axiosInstance from '@/lib/auth/axios-instance'
 
 export interface CreateCollectionInput {
   name: string
@@ -16,10 +17,10 @@ export function useCollections() {
   return useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
-      const response = await fetch('/api/collections')
-      if (!response.ok) throw new Error('Failed to fetch collections')
-      return response.json() as Promise<Collection[]>
+      const { data } = await axiosInstance.get<Collection[]>('/api/collections')
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -28,10 +29,10 @@ export function useCollection(id: string) {
   return useQuery({
     queryKey: ['collection', id],
     queryFn: async () => {
-      const response = await fetch(`/api/collections/${id}`)
-      if (!response.ok) throw new Error('Failed to fetch collection')
-      return response.json() as Promise<Collection>
+      const { data } = await axiosInstance.get<Collection>(`/api/collections/${id}`)
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -39,14 +40,9 @@ export function useCollection(id: string) {
 export function useCreateCollection() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: CreateCollectionInput) => {
-      const response = await fetch('/api/collections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to create collection')
-      return response.json() as Promise<Collection>
+    mutationFn: async (input: CreateCollectionInput) => {
+      const { data } = await axiosInstance.post<Collection>('/api/collections', input)
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
@@ -55,35 +51,29 @@ export function useCreateCollection() {
 }
 
 // Update collection
-export function useUpdateCollection(id: string) {
+export function useUpdateCollection() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: UpdateCollectionInput) => {
-      const response = await fetch(`/api/collections/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to update collection')
-      return response.json() as Promise<Collection>
+    mutationFn: async ({ id, data }: { id: string; data: UpdateCollectionInput }) => {
+      const response = await axiosInstance.put<Collection>(
+        `/api/collections/${id}`,
+        data
+      )
+      return response.data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
-      queryClient.invalidateQueries({ queryKey: ['collection', id] })
+      queryClient.invalidateQueries({ queryKey: ['collection', variables.id] })
     },
   })
 }
 
 // Delete collection
-export function useDeleteCollection(id: string) {
+export function useDeleteCollection() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/collections/${id}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) throw new Error('Failed to delete collection')
-      return response.json()
+    mutationFn: async (id: string) => {
+      await axiosInstance.delete(`/api/collections/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
