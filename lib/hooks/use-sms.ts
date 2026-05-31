@@ -1,30 +1,34 @@
+'use client'
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import axiosInstance from '@/lib/auth/axios-instance'
 
 export interface SMSTemplate {
   id: string
   name: string
-  title: string
-  content: string
-  variables: string[]
+  message: string
   category: 'order' | 'customer' | 'promotion' | 'reminder'
   active: boolean
+  variables: string[]
   createdAt: string
   updatedAt: string
 }
 
 export interface CreateSMSTemplateInput {
   name: string
-  title: string
-  content: string
+  message: string
   category: 'order' | 'customer' | 'promotion' | 'reminder'
+  active: boolean
 }
 
-export interface UpdateSMSTemplateInput {
-  name?: string
-  title?: string
-  content?: string
-  category?: 'order' | 'customer' | 'promotion' | 'reminder'
-  active?: boolean
+export interface UpdateSMSTemplateInput extends Partial<CreateSMSTemplateInput> {}
+
+export interface SMSStats {
+  totalSent: number
+  successRate: number
+  creditsUsed: number
+  categoryBreakdown: Record<string, number>
+  topTemplates: Array<{ name: string; sent: number }>
 }
 
 // Fetch all SMS templates
@@ -32,10 +36,12 @@ export function useSMSTemplates() {
   return useQuery({
     queryKey: ['sms-templates'],
     queryFn: async () => {
-      const response = await fetch('/api/sms/templates')
-      if (!response.ok) throw new Error('Failed to fetch SMS templates')
-      return response.json() as Promise<SMSTemplate[]>
+      const { data } = await axiosInstance.get<SMSTemplate[]>(
+        '/api/sms/templates'
+      )
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -44,27 +50,25 @@ export function useSMSTemplate(id: string) {
   return useQuery({
     queryKey: ['sms-template', id],
     queryFn: async () => {
-      const response = await fetch(`/api/sms/templates/${id}`)
-      if (!response.ok) throw new Error('Failed to fetch SMS template')
-      return response.json() as Promise<SMSTemplate>
+      const { data } = await axiosInstance.get<SMSTemplate>(
+        `/api/sms/templates/${id}`
+      )
+      return data
     },
-    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
 // Create SMS template
 export function useCreateSMSTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: async (data: CreateSMSTemplateInput) => {
-      const response = await fetch('/api/sms/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to create SMS template')
-      return response.json() as Promise<SMSTemplate>
+    mutationFn: async (input: CreateSMSTemplateInput) => {
+      const { data } = await axiosInstance.post<SMSTemplate>(
+        '/api/sms/templates',
+        input
+      )
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sms-templates'] })
@@ -73,22 +77,19 @@ export function useCreateSMSTemplate() {
 }
 
 // Update SMS template
-export function useUpdateSMSTemplate(id: string) {
+export function useUpdateSMSTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: async (data: UpdateSMSTemplateInput) => {
-      const response = await fetch(`/api/sms/templates/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to update SMS template')
-      return response.json() as Promise<SMSTemplate>
+    mutationFn: async ({ id, data }: { id: string; data: UpdateSMSTemplateInput }) => {
+      const response = await axiosInstance.put<SMSTemplate>(
+        `/api/sms/templates/${id}`,
+        data
+      )
+      return response.data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['sms-templates'] })
-      queryClient.invalidateQueries({ queryKey: ['sms-template', id] })
+      queryClient.invalidateQueries({ queryKey: ['sms-template', variables.id] })
     },
   })
 }
@@ -96,14 +97,9 @@ export function useUpdateSMSTemplate(id: string) {
 // Delete SMS template
 export function useDeleteSMSTemplate() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/sms/templates/${id}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) throw new Error('Failed to delete SMS template')
-      return response.json()
+      await axiosInstance.delete(`/api/sms/templates/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sms-templates'] })
@@ -114,14 +110,18 @@ export function useDeleteSMSTemplate() {
 // Send test SMS
 export function useSendTestSMS() {
   return useMutation({
-    mutationFn: async (payload: { templateId: string; phoneNumber: string; variables?: Record<string, string> }) => {
-      const response = await fetch('/api/sms/send-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) throw new Error('Failed to send test SMS')
-      return response.json()
+    mutationFn: async ({
+      templateId,
+      phoneNumber,
+    }: {
+      templateId: string
+      phoneNumber: string
+    }) => {
+      const { data } = await axiosInstance.post<{ message: string }>(
+        '/api/sms/send-test',
+        { templateId, phoneNumber }
+      )
+      return data
     },
   })
 }
@@ -131,9 +131,9 @@ export function useSMSStats() {
   return useQuery({
     queryKey: ['sms-stats'],
     queryFn: async () => {
-      const response = await fetch('/api/sms/stats')
-      if (!response.ok) throw new Error('Failed to fetch SMS stats')
-      return response.json()
+      const { data } = await axiosInstance.get<SMSStats>('/api/sms/stats')
+      return data
     },
+    staleTime: 10 * 60 * 1000,
   })
 }

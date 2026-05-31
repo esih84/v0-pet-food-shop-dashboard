@@ -2,14 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Blog } from '@/lib/data'
+import axiosInstance from '@/lib/auth/axios-instance'
 
 export interface CreateBlogInput {
   title: string
   excerpt: string
   content: string
   author: string
-  status: 'draft' | 'published'
   tags: string[]
+  status: 'published' | 'draft'
 }
 
 export interface UpdateBlogInput extends Partial<CreateBlogInput> {}
@@ -19,10 +20,10 @@ export function useBlogs() {
   return useQuery({
     queryKey: ['blogs'],
     queryFn: async () => {
-      const response = await fetch('/api/blogs')
-      if (!response.ok) throw new Error('Failed to fetch blogs')
-      return response.json() as Promise<Blog[]>
+      const { data } = await axiosInstance.get<Blog[]>('/api/blogs')
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -31,10 +32,10 @@ export function useBlog(id: string) {
   return useQuery({
     queryKey: ['blog', id],
     queryFn: async () => {
-      const response = await fetch(`/api/blogs/${id}`)
-      if (!response.ok) throw new Error('Failed to fetch blog')
-      return response.json() as Promise<Blog>
+      const { data } = await axiosInstance.get<Blog>(`/api/blogs/${id}`)
+      return data
     },
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -42,14 +43,9 @@ export function useBlog(id: string) {
 export function useCreateBlog() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: CreateBlogInput) => {
-      const response = await fetch('/api/blogs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to create blog')
-      return response.json() as Promise<Blog>
+    mutationFn: async (input: CreateBlogInput) => {
+      const { data } = await axiosInstance.post<Blog>('/api/blogs', input)
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] })
@@ -58,35 +54,29 @@ export function useCreateBlog() {
 }
 
 // Update blog
-export function useUpdateBlog(id: string) {
+export function useUpdateBlog() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (data: UpdateBlogInput) => {
-      const response = await fetch(`/api/blogs/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) throw new Error('Failed to update blog')
-      return response.json() as Promise<Blog>
+    mutationFn: async ({ id, data }: { id: string; data: UpdateBlogInput }) => {
+      const response = await axiosInstance.put<Blog>(
+        `/api/blogs/${id}`,
+        data
+      )
+      return response.data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] })
-      queryClient.invalidateQueries({ queryKey: ['blog', id] })
+      queryClient.invalidateQueries({ queryKey: ['blog', variables.id] })
     },
   })
 }
 
 // Delete blog
-export function useDeleteBlog(id: string) {
+export function useDeleteBlog() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/blogs/${id}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) throw new Error('Failed to delete blog')
-      return response.json()
+    mutationFn: async (id: string) => {
+      await axiosInstance.delete(`/api/blogs/${id}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blogs'] })
