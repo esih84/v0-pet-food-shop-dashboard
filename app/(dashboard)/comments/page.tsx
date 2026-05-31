@@ -40,7 +40,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Search,
@@ -51,15 +50,24 @@ import {
   Clock,
   Star,
   MessageSquare,
+  Loader2,
 } from "lucide-react";
-import { comments as initialComments, type Comment } from "@/lib/data";
+import {
+  useComments,
+  useUpdateComment,
+  type UpdateCommentInput,
+} from "@/lib/hooks/use-comments";
 
 export default function CommentsPage() {
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const { data: comments = [], isLoading } = useComments();
+  const updateMutation = useUpdateComment("");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const selectedComment = comments.find((c) => c.id === selectedCommentId);
 
   const filteredComments = comments.filter((comment) => {
     const matchesSearch =
@@ -71,22 +79,19 @@ export default function CommentsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const updateCommentStatus = (
+  const handleStatusChange = async (
     commentId: string,
     newStatus: "approved" | "pending" | "rejected"
   ) => {
-    setComments(
-      comments.map((c) =>
-        c.id === commentId ? { ...c, status: newStatus } : c
-      )
-    );
+    await updateMutation.mutateAsync(commentId, { status: newStatus });
     if (selectedComment?.id === commentId) {
-      setSelectedComment({ ...selectedComment, status: newStatus });
+      setSelectedCommentId(null);
+      setIsDetailOpen(false);
     }
   };
 
-  const openCommentDetail = (comment: Comment) => {
-    setSelectedComment(comment);
+  const openCommentDetail = (commentId: string) => {
+    setSelectedCommentId(commentId);
     setIsDetailOpen(true);
   };
 
@@ -103,29 +108,16 @@ export default function CommentsPage() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "approved":
-        return CheckCircle;
-      case "pending":
-        return Clock;
-      case "rejected":
-        return XCircle;
-      default:
-        return Clock;
-    }
-  };
-
   const renderStars = (rating: number) => {
     return (
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
+      <div className="flex gap-1">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Star
-            key={star}
+            key={i}
             className={`h-4 w-4 ${
-              star <= rating
+              i < rating
                 ? "fill-warning text-warning"
-                : "fill-muted text-muted"
+                : "text-muted-foreground"
             }`}
           />
         ))}
@@ -133,91 +125,37 @@ export default function CommentsPage() {
     );
   };
 
-  const commentStats = {
-    total: comments.length,
-    pending: comments.filter((c) => c.status === "pending").length,
-    approved: comments.filter((c) => c.status === "approved").length,
-    rejected: comments.filter((c) => c.status === "rejected").length,
-    avgRating:
-      comments.reduce((sum, c) => sum + c.rating, 0) / comments.length || 0,
-  };
-
   return (
     <div className="flex flex-col">
       <Header
         title="Comments"
-        description="Manage product reviews and customer feedback."
+        description="Moderate customer reviews and feedback on products."
       />
       <div className="flex-1 p-6 space-y-6">
-        {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Total Reviews</p>
-              <p className="text-2xl font-bold text-foreground">
-                {commentStats.total}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-2xl font-bold text-warning">
-                {commentStats.pending}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Approved</p>
-              <p className="text-2xl font-bold text-success">
-                {commentStats.approved}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Rejected</p>
-              <p className="text-2xl font-bold text-destructive">
-                {commentStats.rejected}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Avg. Rating</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-foreground">
-                  {commentStats.avgRating.toFixed(1)}
-                </p>
-                <Star className="h-5 w-5 fill-warning text-warning" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search comments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-input"
-            />
+        {/* Actions Bar */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search comments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-input"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px] bg-input">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] bg-input">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Comments Table */}
@@ -225,57 +163,60 @@ export default function CommentsPage() {
           <CardHeader>
             <CardTitle className="text-foreground">All Comments</CardTitle>
             <CardDescription>
-              {filteredComments.length} comment
-              {filteredComments.length !== 1 ? "s" : ""} found
+              {filteredComments.length} comment{filteredComments.length !== 1 ? "s" : ""} found
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Product</TableHead>
-                  <TableHead className="text-muted-foreground">Customer</TableHead>
-                  <TableHead className="text-muted-foreground">Rating</TableHead>
-                  <TableHead className="text-muted-foreground">Comment</TableHead>
-                  <TableHead className="text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-muted-foreground text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredComments.map((comment) => {
-                  const StatusIcon = getStatusIcon(comment.status);
-                  return (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">
+                      Product
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Customer
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Rating
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Comment
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredComments.map((comment) => (
                     <TableRow key={comment.id} className="border-border">
-                      <TableCell>
-                        <p className="font-medium text-foreground">
-                          {comment.productName}
-                        </p>
+                      <TableCell className="font-medium text-foreground">
+                        {comment.productName}
                       </TableCell>
                       <TableCell className="text-foreground">
                         {comment.customer}
                       </TableCell>
                       <TableCell>{renderStars(comment.rating)}</TableCell>
                       <TableCell>
-                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                        <p className="text-foreground truncate max-w-xs">
                           {comment.content}
                         </p>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`capitalize gap-1 ${getStatusColor(
+                          className={`capitalize ${getStatusColor(
                             comment.status
                           )}`}
                         >
-                          <StatusIcon className="h-3 w-3" />
                           {comment.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {comment.createdAt}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -286,153 +227,163 @@ export default function CommentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => openCommentDetail(comment)}
+                              onClick={() => openCommentDetail(comment.id)}
                             >
                               <Eye className="h-4 w-4 mr-2" /> View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateCommentStatus(comment.id, "approved")
-                              }
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2 text-success" />{" "}
-                              Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateCommentStatus(comment.id, "rejected")
-                              }
-                            >
-                              <XCircle className="h-4 w-4 mr-2 text-destructive" />{" "}
-                              Reject
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
+      </div>
 
-        {/* Comment Detail Dialog */}
-        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="max-w-lg">
-            {selectedComment && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Review Details
-                  </DialogTitle>
-                  <DialogDescription>
-                    Review for {selectedComment.productName}
-                  </DialogDescription>
-                </DialogHeader>
+      {/* Comment Detail Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Comment Details</DialogTitle>
+            <DialogDescription>
+              {selectedComment?.productName} - Review by {selectedComment?.customer}
+            </DialogDescription>
+          </DialogHeader>
 
-                <div className="space-y-4 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {selectedComment.customer}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedComment.createdAt}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`capitalize ${getStatusColor(
-                        selectedComment.status
-                      )}`}
-                    >
-                      {selectedComment.status}
-                    </Badge>
+          {selectedComment && (
+            <div className="space-y-6 py-4">
+              {/* Rating and Status */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Rating</p>
+                  {renderStars(selectedComment.rating)}
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Current Status</p>
+                  <Badge
+                    variant="outline"
+                    className={`capitalize ${getStatusColor(
+                      selectedComment.status
+                    )}`}
+                  >
+                    {selectedComment.status}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Comment Content */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="font-semibold text-foreground">Review Content</h4>
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <p className="text-foreground leading-relaxed">
+                    {selectedComment.content}
+                  </p>
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="font-semibold text-foreground">Customer Info</h4>
+                <div className="grid gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Name</p>
+                    <p className="text-foreground font-medium">
+                      {selectedComment.customer}
+                    </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Rating
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="text-foreground">
+                      {new Date(selectedComment.createdAt).toLocaleDateString()}
                     </p>
-                    {renderStars(selectedComment.rating)}
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Review
-                    </p>
-                    <p className="text-foreground p-3 rounded-lg bg-secondary/50 border border-border">
-                      {selectedComment.content}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Moderation
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={
-                          selectedComment.status === "approved"
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        onClick={() =>
-                          updateCommentStatus(selectedComment.id, "approved")
-                        }
-                        className="gap-1"
-                      >
-                        <CheckCircle className="h-4 w-4" /> Approve
-                      </Button>
-                      <Button
-                        variant={
-                          selectedComment.status === "pending"
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        onClick={() =>
-                          updateCommentStatus(selectedComment.id, "pending")
-                        }
-                        className="gap-1"
-                      >
-                        <Clock className="h-4 w-4" /> Pending
-                      </Button>
-                      <Button
-                        variant={
-                          selectedComment.status === "rejected"
-                            ? "destructive"
-                            : "outline"
-                        }
-                        size="sm"
-                        onClick={() =>
-                          updateCommentStatus(selectedComment.id, "rejected")
-                        }
-                        className="gap-1"
-                      >
-                        <XCircle className="h-4 w-4" /> Reject
-                      </Button>
-                    </div>
                   </div>
                 </div>
+              </div>
 
-                <DialogFooter>
+              {/* Status Actions */}
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="font-semibold text-foreground">
+                  Moderation Actions
+                </h4>
+                <div className="flex gap-2">
                   <Button
-                    variant="outline"
-                    onClick={() => setIsDetailOpen(false)}
+                    variant={
+                      selectedComment.status === "approved"
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    onClick={() =>
+                      handleStatusChange(selectedComment.id, "approved")
+                    }
+                    disabled={updateMutation.isPending}
+                    className="flex-1"
                   >
-                    Close
+                    {updateMutation.isPending &&
+                    selectedComment.status === "approved" ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Approve
                   </Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+                  <Button
+                    variant={
+                      selectedComment.status === "pending"
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    onClick={() =>
+                      handleStatusChange(selectedComment.id, "pending")
+                    }
+                    disabled={updateMutation.isPending}
+                    className="flex-1"
+                  >
+                    {updateMutation.isPending &&
+                    selectedComment.status === "pending" ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Clock className="h-4 w-4 mr-2" />
+                    )}
+                    Pending
+                  </Button>
+                  <Button
+                    variant={
+                      selectedComment.status === "rejected"
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    onClick={() =>
+                      handleStatusChange(selectedComment.id, "rejected")
+                    }
+                    disabled={updateMutation.isPending}
+                    className="flex-1"
+                  >
+                    {updateMutation.isPending &&
+                    selectedComment.status === "rejected" ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

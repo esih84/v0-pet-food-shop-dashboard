@@ -44,20 +44,32 @@ import {
   Trash2,
   FolderOpen,
   Package,
+  Loader2,
 } from "lucide-react";
-import { collections as initialCollections, type Collection } from "@/lib/data";
+import {
+  useCollections,
+  useCreateCollection,
+  useUpdateCollection,
+  useDeleteCollection,
+} from "@/lib/hooks/use-collections";
 
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<Collection[]>(initialCollections);
+  const { data: collections = [], isLoading } = useCollections();
+  const createMutation = useCreateCollection();
+  const updateMutation = useUpdateCollection("");
+  const deleteMutation = useDeleteCollection("");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     status: "active" as "active" | "draft",
   });
+
+  const editingCollection = collections.find((c) => c.id === editingCollectionId);
 
   const filteredCollections = collections.filter((collection) =>
     collection.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -69,50 +81,41 @@ export default function CollectionsPage() {
       description: "",
       status: "active",
     });
-    setEditingCollection(null);
+    setEditingCollectionId(null);
   };
 
-  const openEditDialog = (collection: Collection) => {
-    setEditingCollection(collection);
-    setFormData({
-      name: collection.name,
-      description: collection.description,
-      status: collection.status,
-    });
-    setIsDialogOpen(true);
+  const openEditDialog = (collectionId: string) => {
+    setEditingCollectionId(collectionId);
+    const collection = collections.find((c) => c.id === collectionId);
+    if (collection) {
+      setFormData({
+        name: collection.name,
+        description: collection.description,
+        status: collection.status,
+      });
+      setIsDialogOpen(true);
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (editingCollection) {
-      setCollections(
-        collections.map((c) =>
-          c.id === editingCollection.id
-            ? { ...c, ...formData }
-            : c
-        )
-      );
+      await updateMutation.mutateAsync(editingCollectionId!, formData);
     } else {
-      const newCollection: Collection = {
-        id: Date.now().toString(),
-        ...formData,
-        image: "/placeholder.svg?height=200&width=200",
-        productCount: 0,
-      };
-      setCollections([...collections, newCollection]);
+      await createMutation.mutateAsync(formData);
     }
     setIsDialogOpen(false);
     resetForm();
   };
 
-  const deleteCollection = (id: string) => {
-    setCollections(collections.filter((c) => c.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteMutation.mutateAsync(id);
   };
 
   return (
     <div className="flex flex-col">
       <Header
         title="Collections"
-        description="Organize your products into collections."
+        description="Organize your pet food products into collections."
       />
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
@@ -197,8 +200,17 @@ export default function CollectionsPage() {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit}>
-                  {editingCollection ? "Update Collection" : "Create Collection"}
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : editingCollection ? (
+                    "Update Collection"
+                  ) : (
+                    "Create Collection"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -206,63 +218,63 @@ export default function CollectionsPage() {
         </div>
 
         {/* Collections Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredCollections.map((collection) => (
-            <Card key={collection.id} className="bg-card border-border overflow-hidden">
-              <div className="h-32 bg-muted flex items-center justify-center">
-                <FolderOpen className="h-12 w-12 text-muted-foreground" />
-              </div>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredCollections.map((collection) => (
+              <Card key={collection.id} className="bg-card border-border overflow-hidden">
+                <div className="h-32 bg-muted flex items-center justify-center">
+                  <FolderOpen className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate">
                         {collection.name}
                       </h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {collection.description}
+                      </p>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            collection.status === "active"
+                              ? "bg-success/20 text-success border-success/30"
+                              : "bg-warning/20 text-warning border-warning/30"
+                          }
+                        >
+                          {collection.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {collection.description}
-                    </p>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Badge
-                        variant="outline"
-                        className={
-                          collection.status === "active"
-                            ? "bg-success/20 text-success border-success/30"
-                            : "bg-warning/20 text-warning border-warning/30"
-                        }
-                      >
-                        {collection.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        {collection.productCount} products
-                      </span>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(collection.id)}>
+                          <Pencil className="h-4 w-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(collection.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="shrink-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(collection)}>
-                        <Pencil className="h-4 w-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => deleteCollection(collection.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

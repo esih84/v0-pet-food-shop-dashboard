@@ -23,13 +23,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,22 +34,33 @@ import {
   Pencil,
   Trash2,
   Image as ImageIcon,
-  GripVertical,
+  Loader2,
 } from "lucide-react";
-import { banners as initialBanners, type Banner } from "@/lib/data";
+import {
+  useBanners,
+  useCreateBanner,
+  useUpdateBanner,
+  useDeleteBanner,
+} from "@/lib/hooks/use-banners";
 
 export default function BannersPage() {
-  const [banners, setBanners] = useState<Banner[]>(initialBanners);
+  const { data: banners = [], isLoading } = useBanners();
+  const createMutation = useCreateBanner();
+  const updateMutation = useUpdateBanner("");
+  const deleteMutation = useDeleteBanner("");
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+  const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
     subtitle: "",
     link: "",
     position: 1,
-    status: "active" as "active" | "inactive",
+    active: true,
   });
+
+  const editingBanner = banners.find((b) => b.id === editingBannerId);
 
   const resetForm = () => {
     setFormData({
@@ -64,71 +68,58 @@ export default function BannersPage() {
       subtitle: "",
       link: "",
       position: banners.length + 1,
-      status: "active",
+      active: true,
     });
-    setEditingBanner(null);
+    setEditingBannerId(null);
   };
 
-  const openEditDialog = (banner: Banner) => {
-    setEditingBanner(banner);
-    setFormData({
-      title: banner.title,
-      subtitle: banner.subtitle,
-      link: banner.link,
-      position: banner.position,
-      status: banner.status,
-    });
-    setIsDialogOpen(true);
+  const openEditDialog = (bannerId: string) => {
+    setEditingBannerId(bannerId);
+    const banner = banners.find((b) => b.id === bannerId);
+    if (banner) {
+      setFormData({
+        title: banner.title,
+        subtitle: banner.subtitle,
+        link: banner.link,
+        position: banner.position,
+        active: banner.active,
+      });
+      setIsDialogOpen(true);
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (editingBanner) {
-      setBanners(
-        banners.map((b) =>
-          b.id === editingBanner.id
-            ? { ...b, ...formData, image: b.image }
-            : b
-        )
-      );
+      await updateMutation.mutateAsync(editingBannerId!, formData);
     } else {
-      const newBanner: Banner = {
-        id: Date.now().toString(),
-        ...formData,
-        image: "/placeholder.svg?height=300&width=1200",
-      };
-      setBanners([...banners, newBanner]);
+      await createMutation.mutateAsync(formData);
     }
     setIsDialogOpen(false);
     resetForm();
   };
 
-  const deleteBanner = (id: string) => {
-    setBanners(banners.filter((b) => b.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteMutation.mutateAsync(id);
   };
 
-  const toggleStatus = (id: string) => {
-    setBanners(
-      banners.map((b) =>
-        b.id === id
-          ? { ...b, status: b.status === "active" ? "inactive" : "active" }
-          : b
-      )
-    );
+  const toggleActive = async (bannerId: string) => {
+    const banner = banners.find((b) => b.id === bannerId);
+    if (banner) {
+      await updateMutation.mutateAsync(bannerId, {
+        active: !banner.active,
+      });
+    }
   };
 
   return (
     <div className="flex flex-col">
       <Header
         title="Banners"
-        description="Manage promotional banners for your storefront."
+        description="Manage promotional banners displayed on your storefront."
       />
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {banners.filter((b) => b.status === "active").length} active banner
-            {banners.filter((b) => b.status === "active").length !== 1 ? "s" : ""}
-          </p>
           <Dialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -141,28 +132,28 @@ export default function BannersPage() {
                 <Plus className="h-4 w-4" /> Add Banner
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>
                   {editingBanner ? "Edit Banner" : "Add New Banner"}
                 </DialogTitle>
                 <DialogDescription>
                   {editingBanner
-                    ? "Update banner details and settings."
-                    : "Create a new promotional banner for your store."}
+                    ? "Update banner details."
+                    : "Create a new promotional banner."}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">Banner Title</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
-                    placeholder="Spring Sale - 30% Off"
+                    placeholder="Summer Sale"
                   />
                 </div>
                 <div className="space-y-2">
@@ -173,7 +164,7 @@ export default function BannersPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, subtitle: e.target.value })
                     }
-                    placeholder="On all premium dog food"
+                    placeholder="Get 50% off pet food"
                   />
                 </div>
                 <div className="space-y-2">
@@ -184,42 +175,35 @@ export default function BannersPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, link: e.target.value })
                     }
-                    placeholder="/collections/dog-food"
+                    placeholder="https://example.com/sale"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="position">Position</Label>
-                    <Input
-                      id="position"
-                      type="number"
-                      value={formData.position}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          position: parseInt(e.target.value) || 1,
-                        })
-                      }
-                      min={1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: "active" | "inactive") =>
-                        setFormData({ ...formData, status: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="position">Position Order</Label>
+                  <Input
+                    id="position"
+                    type="number"
+                    value={formData.position}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        position: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    placeholder="1"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="active"
+                    checked={formData.active}
+                    onChange={(e) =>
+                      setFormData({ ...formData, active: e.target.checked })
+                    }
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="active">Active</Label>
                 </div>
               </div>
 
@@ -227,8 +211,17 @@ export default function BannersPage() {
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit}>
-                  {editingBanner ? "Update Banner" : "Create Banner"}
+                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : editingBanner ? (
+                    "Update Banner"
+                  ) : (
+                    "Create Banner"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -236,71 +229,87 @@ export default function BannersPage() {
         </div>
 
         {/* Banners Grid */}
-        <div className="grid gap-4">
-          {banners
-            .sort((a, b) => a.position - b.position)
-            .map((banner) => (
-              <Card key={banner.id} className="bg-card border-border overflow-hidden">
-                <div className="flex flex-col md:flex-row">
-                  <div className="relative w-full md:w-80 h-40 bg-muted flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                    <div className="absolute top-2 left-2 flex items-center gap-1 text-muted-foreground">
-                      <GripVertical className="h-4 w-4" />
-                      <span className="text-xs font-medium">#{banner.position}</span>
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">All Banners</CardTitle>
+            <CardDescription>
+              {banners.length} banner{banners.length !== 1 ? "s" : ""} total
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {banners.map((banner) => (
+                  <div
+                    key={banner.id}
+                    className="relative border border-border rounded-lg overflow-hidden bg-secondary/50 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="aspect-video bg-muted flex items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
                     </div>
-                  </div>
-                  <div className="flex-1 p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground">
-                            {banner.title}
-                          </h3>
-                          <Badge
-                            variant="outline"
-                            className={
-                              banner.status === "active"
-                                ? "bg-success/20 text-success border-success/30"
-                                : "bg-muted text-muted-foreground border-muted"
-                            }
-                          >
-                            {banner.status}
-                          </Badge>
-                        </div>
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-foreground">
+                          {banner.title}
+                        </h3>
                         <p className="text-sm text-muted-foreground">
                           {banner.subtitle}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Link: {banner.link}
-                        </p>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(banner)}>
-                            <Pencil className="h-4 w-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toggleStatus(banner.id)}>
-                            {banner.status === "active" ? "Deactivate" : "Activate"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteBanner(banner.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">#{banner.position}</Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            banner.active
+                              ? "bg-success/20 text-success border-success/30"
+                              : "bg-muted text-muted-foreground"
+                          }
+                        >
+                          {banner.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => toggleActive(banner.id)}
+                        >
+                          {banner.active ? "Deactivate" : "Activate"}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => openEditDialog(banner.id)}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(banner.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
