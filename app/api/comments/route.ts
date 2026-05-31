@@ -1,8 +1,8 @@
-import { comments } from '@/lib/data'
+import { mockComments } from '@/lib/data'
 
 export async function GET() {
   try {
-    return Response.json(comments)
+    return Response.json(mockComments)
   } catch (error) {
     return Response.json(
       { error: 'Failed to fetch comments' },

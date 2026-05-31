@@ -1,4 +1,4 @@
-import { orders } from '@/lib/data'
+import { mockOrders } from '@/lib/data'
 import type { Order } from '@/lib/data'
 
 export async function GET(
@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const order = orders.find((o) => o.id === params.id)
+    const order = mockOrders.find((o) => o.id === params.id)
     
     if (!order) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = orders.findIndex((o) => o.id === params.id)
+    const index = mockOrders.findIndex((o) => o.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = orders.findIndex((o) => o.id === params.id)
+    const index = mockOrders.findIndex((o) => o.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    orders.splice(index, 1)
+    mockOrders.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

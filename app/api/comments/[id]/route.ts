@@ -1,4 +1,4 @@
-import { comments } from '@/lib/data'
+import { mockComments } from '@/lib/data'
 import type { Comment } from '@/lib/data'
 
 export async function GET(
@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const comment = comments.find((c) => c.id === params.id)
+    const comment = mockComments.find((c) => c.id === params.id)
     
     if (!comment) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = comments.findIndex((c) => c.id === params.id)
+    const index = mockComments.findIndex((c) => c.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = comments.findIndex((c) => c.id === params.id)
+    const index = mockComments.findIndex((c) => c.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    comments.splice(index, 1)
+    mockComments.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

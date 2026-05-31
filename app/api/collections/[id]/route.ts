@@ -1,12 +1,12 @@
-import { collections } from '@/lib/data'
-import type { Collection } from '@/lib/data'
+import { mockCollections } from '@/lib/data'
+import type { Collection } from '@/lib/types'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const collection = collections.find((c) => c.id === params.id)
+    const collection = mockCollections.find((c) => c.id === params.id)
     
     if (!collection) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = collections.findIndex((c) => c.id === params.id)
+    const index = mockCollections.findIndex((c) => c.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = collections.findIndex((c) => c.id === params.id)
+    const index = mockCollections.findIndex((c) => c.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    collections.splice(index, 1)
+    mockCollections.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

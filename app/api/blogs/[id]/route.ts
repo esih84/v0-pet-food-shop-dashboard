@@ -1,12 +1,12 @@
-import { blogs } from '@/lib/data'
-import type { Blog } from '@/lib/data'
+import { mockBlogs } from '@/lib/data'
+import type { Blog } from '@/lib/types'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const blog = blogs.find((b) => b.id === params.id)
+    const blog = mockBlogs.find((b) => b.id === params.id)
     
     if (!blog) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = blogs.findIndex((b) => b.id === params.id)
+    const index = mockBlogs.findIndex((b) => b.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = blogs.findIndex((b) => b.id === params.id)
+    const index = mockBlogs.findIndex((b) => b.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    blogs.splice(index, 1)
+    mockBlogs.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

@@ -1,9 +1,9 @@
-import { blogs } from '@/lib/data'
-import type { Blog } from '@/lib/data'
+import { mockBlogs } from '@/lib/data'
+import type { Blog } from '@/lib/types'
 
 export async function GET() {
   try {
-    return Response.json(blogs)
+    return Response.json(mockBlogs)
   } catch (error) {
     return Response.json(
       { error: 'Failed to fetch blogs' },
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
     
-    blogs.push(newBlog)
+    mockBlogs.push(newBlog)
     
     return Response.json(newBlog, { status: 201 })
   } catch (error) {
