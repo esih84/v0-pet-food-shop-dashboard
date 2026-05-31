@@ -20,8 +20,8 @@ import {
 import {
   dashboardStats,
   revenueData,
-  orders,
-  products,
+  mockOrders,
+  mockProducts,
 } from "@/lib/data";
 import {
   AreaChart,
@@ -80,8 +80,8 @@ function getStatusColor(status: string) {
 }
 
 export function DashboardOverview() {
-  const recentOrders = orders.slice(0, 5);
-  const lowStockProducts = products.filter((p) =>
+  const recentOrders = mockOrders.slice(0, 5);
+  const lowStockProducts = mockProducts.filter((p) =>
     p.variants.some((v) => v.stock < 50)
   );
 

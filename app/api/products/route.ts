@@ -1,9 +1,9 @@
-import { products } from '@/lib/data'
-import type { Product } from '@/lib/data'
+import { mockProducts } from '@/lib/data'
+import type { Product } from '@/lib/types'
 
 export async function GET() {
   try {
-    return Response.json(products)
+    return Response.json(mockProducts)
   } catch (error) {
     return Response.json(
       { error: 'Failed to fetch products' },
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
     
     // In a real app, save to database
-    products.push(newProduct)
+    mockProducts.push(newProduct)
     
     return Response.json(newProduct, { status: 201 })
   } catch (error) {

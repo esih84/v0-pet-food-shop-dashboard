@@ -1,8 +1,8 @@
-import { orders } from '@/lib/data'
+import { mockOrders } from '@/lib/data'
 
 export async function GET() {
   try {
-    return Response.json(orders)
+    return Response.json(mockOrders)
   } catch (error) {
     return Response.json(
       { error: 'Failed to fetch orders' },

@@ -1,12 +1,12 @@
-import { banners } from '@/lib/data'
-import type { Banner } from '@/lib/data'
+import { mockBanners } from '@/lib/data'
+import type { Banner } from '@/lib/types'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const banner = banners.find((b) => b.id === params.id)
+    const banner = mockBanners.find((b) => b.id === params.id)
     
     if (!banner) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = banners.findIndex((b) => b.id === params.id)
+    const index = mockBanners.findIndex((b) => b.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = banners.findIndex((b) => b.id === params.id)
+    const index = mockBanners.findIndex((b) => b.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    banners.splice(index, 1)
+    mockBanners.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

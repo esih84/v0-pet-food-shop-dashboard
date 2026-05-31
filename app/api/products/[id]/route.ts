@@ -1,12 +1,12 @@
-import { products } from '@/lib/data'
-import type { Product } from '@/lib/data'
+import { mockProducts } from '@/lib/data'
+import type { Product } from '@/lib/types'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const product = products.find((p) => p.id === params.id)
+    const product = mockProducts.find((p) => p.id === params.id)
     
     if (!product) {
       return Response.json(
@@ -30,7 +30,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const index = products.findIndex((p) => p.id === params.id)
+    const index = mockProducts.findIndex((p) => p.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const index = products.findIndex((p) => p.id === params.id)
+    const index = mockProducts.findIndex((p) => p.id === params.id)
     
     if (index === -1) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function DELETE(
       )
     }
     
-    products.splice(index, 1)
+    mockProducts.splice(index, 1)
     
     return Response.json({ success: true })
   } catch (error) {

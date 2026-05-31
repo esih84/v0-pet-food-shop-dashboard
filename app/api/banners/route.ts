@@ -1,9 +1,9 @@
-import { banners } from '@/lib/data'
-import type { Banner } from '@/lib/data'
+import { mockBanners } from '@/lib/data'
+import type { Banner } from '@/lib/types'
 
 export async function GET() {
   try {
-    return Response.json(banners)
+    return Response.json(mockBanners)
   } catch (error) {
     return Response.json(
       { error: 'Failed to fetch banners' },
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
     
-    banners.push(newBanner)
+    mockBanners.push(newBanner)
     
     return Response.json(newBanner, { status: 201 })
   } catch (error) {
