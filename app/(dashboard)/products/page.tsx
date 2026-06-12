@@ -55,16 +55,17 @@ import {
   Loader2,
 } from "lucide-react";
 import { type ProductVariant, type ProductAttribute } from "@/lib/data";
-import {
-  useProducts,
-  useCreateProduct,
-  useUpdateProduct,
-  useDeleteProduct,
-  type CreateProductInput,
-} from "@/lib/hooks/use-products";
+import { useProducts } from "@/features/products/hooks/use-products";
+import { useUpdateProduct } from "@/features/products/hooks/use-update-product";
+import { useCreateProduct } from "@/features/products/hooks/use-create-product";
+import { useDeleteProduct } from "@/features/products/hooks/use-delete-product";
 
 export default function ProductsPage() {
-  const { data: products = [], isLoading, error } = useProducts();
+  const { data, isLoading, error } = useProducts();
+
+  const products = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 0;
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct("");
   const deleteMutation = useDeleteProduct("");
@@ -127,7 +128,7 @@ export default function ProductsPage() {
           price: v.price,
           stock: v.stock,
           sku: v.sku,
-        }))
+        })),
       );
       setAttributes([...product.attributes]);
       setIsDialogOpen(true);
@@ -169,9 +170,11 @@ export default function ProductsPage() {
   const updateVariant = (
     index: number,
     field: keyof Omit<ProductVariant, "id">,
-    value: string | number
+    value: string | number,
   ) => {
-    setVariants(variants.map((v, i) => (i === index ? { ...v, [field]: value } : v)));
+    setVariants(
+      variants.map((v, i) => (i === index ? { ...v, [field]: value } : v)),
+    );
   };
 
   const addAttribute = () => {
@@ -182,9 +185,13 @@ export default function ProductsPage() {
     setAttributes(attributes.filter((_, i) => i !== index));
   };
 
-  const updateAttribute = (index: number, field: "key" | "value", value: string) => {
+  const updateAttribute = (
+    index: number,
+    field: "key" | "value",
+    value: string,
+  ) => {
     setAttributes(
-      attributes.map((a, i) => (i === index ? { ...a, [field]: value } : a))
+      attributes.map((a, i) => (i === index ? { ...a, [field]: value } : a)),
     );
   };
 
@@ -216,14 +223,15 @@ export default function ProductsPage() {
         <div className="flex-1 p-6">
           <Card className="bg-destructive/10 border-destructive">
             <CardContent className="pt-6">
-              <p className="text-destructive">Error loading products. Please try again.</p>
+              <p className="text-destructive">
+                Error loading products. Please try again.
+              </p>
             </CardContent>
           </Card>
         </div>
       </div>
     );
   }
-
   return (
     <div className="flex flex-col">
       <Header
@@ -282,7 +290,9 @@ export default function ProductsPage() {
               <div className="space-y-6 py-4">
                 {/* Basic Info */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">Basic Information</h4>
+                  <h4 className="font-medium text-foreground">
+                    Basic Information
+                  </h4>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="name">Product Name</Label>
@@ -310,7 +320,9 @@ export default function ProductsPage() {
                           <SelectItem value="Dog Food">Dog Food</SelectItem>
                           <SelectItem value="Cat Food">Cat Food</SelectItem>
                           <SelectItem value="Treats">Treats</SelectItem>
-                          <SelectItem value="Accessories">Accessories</SelectItem>
+                          <SelectItem value="Accessories">
+                            Accessories
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -321,7 +333,10 @@ export default function ProductsPage() {
                       id="description"
                       value={formData.description}
                       onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
                       }
                       placeholder="Describe your product..."
                       rows={3}
@@ -350,7 +365,9 @@ export default function ProductsPage() {
                 {/* Variants */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-foreground">Size Variants</h4>
+                    <h4 className="font-medium text-foreground">
+                      Size Variants
+                    </h4>
                     <Button
                       type="button"
                       variant="outline"
@@ -385,7 +402,7 @@ export default function ProductsPage() {
                               updateVariant(
                                 index,
                                 "price",
-                                parseFloat(e.target.value) || 0
+                                parseFloat(e.target.value) || 0,
                               )
                             }
                             placeholder="29.99"
@@ -400,7 +417,7 @@ export default function ProductsPage() {
                               updateVariant(
                                 index,
                                 "stock",
-                                parseInt(e.target.value) || 0
+                                parseInt(e.target.value) || 0,
                               )
                             }
                             placeholder="100"
@@ -491,10 +508,18 @@ export default function ProductsPage() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
                   {createMutation.isPending || updateMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -516,7 +541,8 @@ export default function ProductsPage() {
           <CardHeader>
             <CardTitle className="text-foreground">All Products</CardTitle>
             <CardDescription>
-              {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""} found
+              {filteredProducts.length} product
+              {filteredProducts.length !== 1 ? "s" : ""} found
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -537,8 +563,12 @@ export default function ProductsPage() {
                     <TableHead className="text-muted-foreground">
                       Variants
                     </TableHead>
-                    <TableHead className="text-muted-foreground">Stock</TableHead>
-                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Stock
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">
+                      Status
+                    </TableHead>
                     <TableHead className="text-muted-foreground text-right">
                       Actions
                     </TableHead>
@@ -568,7 +598,11 @@ export default function ProductsPage() {
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {product.variants.map((v) => (
-                            <Badge key={v.id} variant="outline" className="text-xs">
+                            <Badge
+                              key={v.id}
+                              variant="outline"
+                              className="text-xs"
+                            >
                               {v.size} - ${v.price}
                             </Badge>
                           ))}

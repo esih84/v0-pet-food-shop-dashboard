@@ -46,18 +46,21 @@ import {
 export default function BannersPage() {
   const { data: banners = [], isLoading } = useBanners();
   const createMutation = useCreateBanner();
-  const updateMutation = useUpdateBanner("");
-  const deleteMutation = useDeleteBanner("");
+  const updateMutation = useUpdateBanner();
+  const deleteMutation = useDeleteBanner();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
-    subtitle: "",
+    description: "",
+    imageUrl: "",
+    mobileImageUrl: "",
     link: "",
-    position: 1,
-    active: true,
+    position: "home",
+    order: banners.length + 1,
+    isActive: true,
   });
 
   const editingBanner = banners.find((b) => b.id === editingBannerId);
@@ -65,10 +68,13 @@ export default function BannersPage() {
   const resetForm = () => {
     setFormData({
       title: "",
-      subtitle: "",
+      description: "",
+      imageUrl: "",
+      mobileImageUrl: "",
       link: "",
-      position: banners.length + 1,
-      active: true,
+      position: "home",
+      order: banners.length + 1,
+      isActive: true,
     });
     setEditingBannerId(null);
   };
@@ -76,26 +82,38 @@ export default function BannersPage() {
   const openEditDialog = (bannerId: string) => {
     setEditingBannerId(bannerId);
     const banner = banners.find((b) => b.id === bannerId);
+
     if (banner) {
       setFormData({
-        title: banner.title,
-        subtitle: banner.subtitle,
-        link: banner.link,
-        position: banner.position,
-        active: banner.active,
+        title: banner.title || "",
+        description: banner.description || "",
+        imageUrl: banner.imageUrl || "",
+        mobileImageUrl: banner.mobileImageUrl || "",
+        link: banner.link || "",
+        position: banner.position || "home",
+        order: banner.order || 1,
+        isActive: banner.isActive ?? true,
       });
       setIsDialogOpen(true);
     }
   };
 
   const handleSubmit = async () => {
-    if (editingBanner) {
-      await updateMutation.mutateAsync(editingBannerId!, formData);
-    } else {
-      await createMutation.mutateAsync(formData);
+    try {
+      if (editingBannerId) {
+        await updateMutation.mutateAsync({
+          id: editingBannerId,
+          data: formData,
+        });
+      } else {
+        await createMutation.mutateAsync(formData);
+      }
+
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error("Failed to save banner:", error);
     }
-    setIsDialogOpen(false);
-    resetForm();
   };
 
   const handleDelete = async (id: string) => {
@@ -104,11 +122,14 @@ export default function BannersPage() {
 
   const toggleActive = async (bannerId: string) => {
     const banner = banners.find((b) => b.id === bannerId);
-    if (banner) {
-      await updateMutation.mutateAsync(bannerId, {
-        active: !banner.active,
-      });
-    }
+    if (!banner) return;
+
+    await updateMutation.mutateAsync({
+      id: bannerId,
+      data: {
+        isActive: !banner.isActive,
+      },
+    });
   };
 
   return (
@@ -157,16 +178,42 @@ export default function BannersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subtitle">Subtitle</Label>
+                  <Label htmlFor="description">Description</Label>
                   <Input
-                    id="subtitle"
-                    value={formData.subtitle}
+                    id="description"
+                    value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, subtitle: e.target.value })
+                      setFormData({ ...formData, description: e.target.value })
                     }
                     placeholder="Get 50% off pet food"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Input
+                    id="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, imageUrl: e.target.value })
+                    }
+                    placeholder="https://example.com/banner.jpg"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mobileImageUrl">Mobile Image URL</Label>
+                  <Input
+                    id="mobileImageUrl"
+                    value={formData.mobileImageUrl}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        mobileImageUrl: e.target.value,
+                      })
+                    }
+                    placeholder="https://example.com/banner-mobile.jpg"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="link">Link URL</Label>
                   <Input
@@ -179,39 +226,59 @@ export default function BannersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="position">Position Order</Label>
+                  <Label htmlFor="position">Position</Label>
                   <Input
                     id="position"
-                    type="number"
                     value={formData.position}
+                    onChange={(e) =>
+                      setFormData({ ...formData, position: e.target.value })
+                    }
+                    placeholder="home"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="order">Order</Label>
+                  <Input
+                    id="order"
+                    type="number"
+                    value={formData.order}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        position: parseInt(e.target.value) || 1,
+                        order: parseInt(e.target.value) || 1,
                       })
                     }
                     placeholder="1"
                   />
                 </div>
+
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    id="active"
-                    checked={formData.active}
+                    id="isActive"
+                    checked={formData.isActive}
                     onChange={(e) =>
-                      setFormData({ ...formData, active: e.target.checked })
+                      setFormData({ ...formData, isActive: e.target.checked })
                     }
                     className="w-4 h-4"
                   />
-                  <Label htmlFor="active">Active</Label>
+                  <Label htmlFor="isActive">Active</Label>
                 </div>
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
                   {createMutation.isPending || updateMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -248,8 +315,16 @@ export default function BannersPage() {
                     key={banner.id}
                     className="relative border border-border rounded-lg overflow-hidden bg-secondary/50 hover:border-primary/50 transition-colors"
                   >
-                    <div className="aspect-video bg-muted flex items-center justify-center">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                    <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                      {banner.imageUrl ? (
+                        <img
+                          src={banner.imageUrl}
+                          alt={banner.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                      )}
                     </div>
                     <div className="p-4 space-y-3">
                       <div>
@@ -257,20 +332,21 @@ export default function BannersPage() {
                           {banner.title}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {banner.subtitle}
+                          {banner.description}
                         </p>
                       </div>
                       <div className="flex items-center justify-between">
-                        <Badge variant="outline">#{banner.position}</Badge>
+                        <Badge variant="outline">{banner.position}</Badge>
+                        <Badge variant="outline">#{banner.order}</Badge>
                         <Badge
                           variant="outline"
                           className={
-                            banner.active
+                            banner.isActive
                               ? "bg-success/20 text-success border-success/30"
                               : "bg-muted text-muted-foreground"
                           }
                         >
-                          {banner.active ? "Active" : "Inactive"}
+                          {banner.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                       <div className="flex gap-2">
@@ -280,7 +356,7 @@ export default function BannersPage() {
                           className="flex-1"
                           onClick={() => toggleActive(banner.id)}
                         >
-                          {banner.active ? "Deactivate" : "Activate"}
+                          {banner.isActive ? "Deactivate" : "Activate"}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

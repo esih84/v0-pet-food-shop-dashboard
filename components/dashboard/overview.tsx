@@ -34,11 +34,16 @@ import {
 } from "recharts";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
 
 const stats = [
   {
     title: "Total Revenue",
-    value: `$${dashboardStats.totalRevenue.toLocaleString()}`,
+    value: usd.format(dashboardStats.totalRevenue),
     change: dashboardStats.revenueChange,
     icon: DollarSign,
   },
@@ -82,7 +87,7 @@ function getStatusColor(status: string) {
 export function DashboardOverview() {
   const recentOrders = mockOrders.slice(0, 5);
   const lowStockProducts = mockProducts.filter((p) =>
-    p.variants.some((v) => v.stock < 50)
+    p.variants.some((v) => v.stock < 50),
   );
 
   return (
@@ -98,7 +103,9 @@ export function DashboardOverview() {
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+              <div className="text-2xl font-bold text-foreground">
+                {stat.value}
+              </div>
               <div className="flex items-center gap-1 text-xs">
                 {stat.change > 0 ? (
                   <TrendingUp className="h-3 w-3 text-success" />
@@ -126,14 +133,22 @@ export function DashboardOverview() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">Revenue Overview</CardTitle>
-            <CardDescription>Monthly revenue for the past 6 months</CardDescription>
+            <CardDescription>
+              Monthly revenue for the past 6 months
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueData}>
                   <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient
+                      id="colorRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
                       <stop
                         offset="5%"
                         stopColor="oklch(0.72 0.18 160)"
@@ -172,7 +187,10 @@ export function DashboardOverview() {
                       borderRadius: "8px",
                       color: "oklch(0.95 0 0)",
                     }}
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: number) => [
+                      `$${value.toLocaleString()}`,
+                      "Revenue",
+                    ]}
                   />
                   <Area
                     type="monotone"

@@ -65,3 +65,14 @@ export type Product = {
   createdAt: string;
   updatedAt: string;
 };
+
+export interface CreateProductInput {
+  name: string;
+  description: string;
+  category: string;
+  status: "active" | "draft" | "archived";
+  variants: Omit<ProductVariant, "id">[];
+  attributes: ProductAttribute[];
+}
+
+export interface UpdateProductInput extends Partial<CreateProductInput> {}
