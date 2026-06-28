@@ -4,7 +4,6 @@ export type { User, Role } from "./user";
 // Products
 export type {
   Product,
-  ProductVariant,
   ProductAttribute,
   ProductImage,
   Discount,

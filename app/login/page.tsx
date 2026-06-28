@@ -1,136 +1,136 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/lib/hooks/use-auth";
-import { PawPrint } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/features/auth/mutations";
+import { PawPrint, Loader2 } from "lucide-react";
 
-function LoginPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { login, loginPending, loginError } = useAuth();
+export default function LoginPage() {
+  const { sendOtp, sendOtpPending, verifyOtp, verifyOtpPending } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (!email || !password) {
-      setError("Email and password are required");
+    if (!/^09\d{9}$/.test(phone)) {
+      setError("شماره موبایل معتبر نیست. نمونه: ۰۹۱۲۳۴۵۶۷۸۹");
       return;
     }
+    try {
+      await sendOtp(phone);
+      setStep("code");
+    } catch {
+      setError("ارسال کد با خطا مواجه شد. دوباره تلاش کنید.");
+    }
+  };
 
-    login({ email, password });
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (code.length !== 5) {
+      setError("کد تأیید باید ۵ رقم باشد.");
+      return;
+    }
+    try {
+      await verifyOtp({ phone, code });
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message.includes("ادمین")
+          ? err.message
+          : "کد وارد شده نادرست یا منقضی شده است.",
+      );
+    }
   };
 
   return (
-    <LoginPage />
-  );
-}
-
-function LoginPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+    <div
+      dir="rtl"
+      className="min-h-screen flex items-center justify-center bg-background px-4"
+    >
       <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <PawPrint className="w-8 h-8 text-amber-500" />
-            <h1 className="text-2xl font-bold text-white">PetFood Admin</h1>
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
+            <PawPrint className="w-7 h-7 text-primary-foreground" />
           </div>
-          <p className="text-slate-400">Shop Management Dashboard</p>
+          <h1 className="text-xl font-bold text-foreground">ورود به پنل مدیریت</h1>
+          <p className="text-sm text-muted-foreground mt-1 text-center">
+            {step === "phone"
+              ? "شماره موبایل ادمین را وارد کنید"
+              : `کد تأیید پیامک‌شده به ${phone} را وارد کنید`}
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-slate-800 rounded-lg shadow-2xl p-8 border border-slate-700">
-          <h2 className="text-xl font-semibold text-white mb-6">Sign In</h2>
-
-          {/* Error Messages */}
-          {(error || loginError) && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm">
-              {error || loginError?.message || "Login failed"}
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-8">
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm text-center">
+              {error}
             </div>
           )}
 
-          {/* Redirect Message */}
-          {searchParams.get("redirect") && (
-            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 text-sm">
-              You need to login to access this page
-            </div>
+          {step === "phone" ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <input
+                type="tel"
+                inputMode="numeric"
+                dir="ltr"
+                placeholder="09123456789"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.trim())}
+                className="w-full text-center tracking-widest rounded-2xl border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="submit"
+                disabled={sendOtpPending}
+                className="w-full rounded-2xl bg-primary text-primary-foreground py-3 font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {sendOtpPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                ارسال کد تأیید
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerify} className="space-y-4">
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                maxLength={5}
+                placeholder="-----"
+                value={code}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 5))
+                }
+                className="w-full text-center text-lg tracking-[0.5em] rounded-2xl border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button
+                type="submit"
+                disabled={verifyOtpPending}
+                className="w-full rounded-2xl bg-primary text-primary-foreground py-3 font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {verifyOtpPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                ورود
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("phone");
+                  setCode("");
+                  setError(null);
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                تغییر شماره موبایل
+              </button>
+            </form>
           )}
-
-          {/* Demo Credentials */}
-          <div className="mb-6 p-3 bg-slate-700 rounded border border-slate-600">
-            <p className="text-slate-300 text-xs font-semibold mb-2">
-              Demo Credentials:
-            </p>
-            <div className="space-y-1 text-slate-400 text-xs">
-              <p>Email: admin@petfood.com</p>
-              <p>Password: admin123</p>
-            </div>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@petfood.com"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                disabled={loginPending}
-              />
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                disabled={loginPending}
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loginPending}
-              className="w-full mt-6 px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/50 disabled:cursor-not-allowed text-white font-semibold rounded transition-colors"
-            >
-              {loginPending ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-slate-400 text-sm mt-6">
-          Admin Dashboard • Protected Access
+        <p className="text-center text-muted-foreground text-sm mt-6">
+          پنل مدیریت • دسترسی محافظت‌شده
         </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPageWrapper() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginPageContent />
-    </Suspense>
   );
 }

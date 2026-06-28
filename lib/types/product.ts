@@ -15,8 +15,8 @@ export type Discount = {
 };
 
 export type ProductAttribute = {
-  id: string;
-  productId: string;
+  id?: string;
+  productId?: string;
   key: string;
   value: string;
 };
@@ -24,7 +24,6 @@ export type ProductAttribute = {
 export type ProductImage = {
   id: string;
   productId: string;
-  variantId?: string;
   url: string;
   thumbnailUrl?: string;
   mediumUrl?: string;
@@ -33,31 +32,19 @@ export type ProductImage = {
   isPrimary: boolean;
 };
 
-export type ProductVariant = {
-  id: string;
-  productId: string;
-  color?: string;
-  size?: string;
-  price: number;
-  stock: number;
-  sku: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type Product = {
   id: string;
   name: string;
   slug: string;
   description?: string;
   basePrice: number;
+  stock: number;
+  sku?: string;
   isActive: boolean;
 
   categoryId?: string;
   category?: Category | null;
 
-  variants?: ProductVariant[];
   images?: ProductImage[];
   attributes?: ProductAttribute[];
   discounts?: Discount[];
@@ -68,11 +55,15 @@ export type Product = {
 
 export interface CreateProductInput {
   name: string;
-  description: string;
-  category: string;
-  status: "active" | "draft" | "archived";
-  variants: Omit<ProductVariant, "id">[];
-  attributes: ProductAttribute[];
+  description?: string;
+  basePrice: number;
+  stock: number;
+  sku?: string;
+  categoryId?: string;
+  isActive?: boolean;
+  attributes?: ProductAttribute[];
+  /** تصاویر محصول — هنگام ساخت/ویرایش آپلود می‌شوند (اولین تصویر، تصویر اصلی) */
+  images?: File[];
 }
 
 export interface UpdateProductInput extends Partial<CreateProductInput> {}

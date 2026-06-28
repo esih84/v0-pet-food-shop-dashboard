@@ -1,5 +1,5 @@
 import type { User } from "./user";
-import type { Product, ProductVariant } from "./product";
+import type { Product } from "./product";
 
 export type Wishlist = {
   id: string;
@@ -9,9 +9,6 @@ export type Wishlist = {
 
   productId: string;
   product?: Product;
-
-  variantId?: string;
-  variant?: ProductVariant | null;
 
   addedAt: string;
 };

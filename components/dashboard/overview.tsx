@@ -13,86 +13,58 @@ import {
   ShoppingCart,
   Package,
   Users,
-  TrendingUp,
-  TrendingDown,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
-import {
-  dashboardStats,
-  revenueData,
-  mockOrders,
-  mockProducts,
-} from "@/lib/data";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-const usd = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
+import { useOrders } from "@/features/order/queries";
+import { useCustomers } from "@/features/customer/queries";
+import { useProducts } from "@/features/product/queries";
 
-const stats = [
-  {
-    title: "Total Revenue",
-    value: usd.format(dashboardStats.totalRevenue),
-    change: dashboardStats.revenueChange,
-    icon: DollarSign,
-  },
-  {
-    title: "Total Orders",
-    value: dashboardStats.totalOrders.toString(),
-    change: dashboardStats.ordersChange,
-    icon: ShoppingCart,
-  },
-  {
-    title: "Total Products",
-    value: dashboardStats.totalProducts.toString(),
-    change: dashboardStats.productsChange,
-    icon: Package,
-  },
-  {
-    title: "Total Customers",
-    value: dashboardStats.totalCustomers.toString(),
-    change: dashboardStats.customersChange,
-    icon: Users,
-  },
-];
+const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "delivered":
-      return "bg-success/20 text-success border-success/30";
-    case "shipped":
-      return "bg-info/20 text-info border-info/30";
-    case "processing":
-      return "bg-warning/20 text-warning border-warning/30";
-    case "pending":
-      return "bg-muted text-muted-foreground border-muted";
-    case "cancelled":
-      return "bg-destructive/20 text-destructive border-destructive/30";
-    default:
-      return "bg-muted text-muted-foreground border-muted";
-  }
-}
+const STATUS_FA: Record<string, { label: string; className: string }> = {
+  pending: { label: "در انتظار", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+  confirmed: { label: "تأییدشده", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  processing: { label: "در حال پردازش", className: "bg-blue-400/15 text-blue-500 border-blue-400/30" },
+  shipped: { label: "ارسال‌شده", className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30" },
+  delivered: { label: "تحویل‌شده", className: "bg-green-500/15 text-green-600 border-green-500/30" },
+  cancelled: { label: "لغوشده", className: "bg-red-500/15 text-red-600 border-red-500/30" },
+  refunded: { label: "مرجوع‌شده", className: "bg-gray-500/15 text-gray-600 border-gray-500/30" },
+};
 
 export function DashboardOverview() {
-  const recentOrders = mockOrders.slice(0, 5);
-  const lowStockProducts = mockProducts.filter((p) =>
-    p.variants.some((v) => v.stock < 50),
-  );
+  const { data: ordersRes, isLoading: ordersLoading } = useOrders(1, 100);
+  const { data: customersRes } = useCustomers(1, 1);
+  const { data: productsRes } = useProducts();
+
+  const orders = ordersRes?.data ?? [];
+  const revenue = orders
+    .filter((o) => o.status !== "cancelled" && o.status !== "refunded")
+    .reduce((sum, o) => sum + Number(o.finalAmount), 0);
+
+  const products = productsRes?.data ?? [];
+  const lowStock = products.filter((p) => (p.stock ?? 0) < 10);
+
+  const stats = [
+    { title: "درآمد کل", value: toman(revenue), icon: DollarSign },
+    { title: "تعداد سفارش‌ها", value: (ordersRes?.total ?? 0).toLocaleString("fa-IR"), icon: ShoppingCart },
+    { title: "تعداد محصولات", value: (productsRes?.total ?? 0).toLocaleString("fa-IR"), icon: Package },
+    { title: "تعداد مشتریان", value: (customersRes?.total ?? 0).toLocaleString("fa-IR"), icon: Users },
+  ];
+
+  const recentOrders = orders.slice(0, 5);
+  const customerName = (o: {
+    shippingAddress?: { firstName?: string; lastName?: string };
+    user?: { phone?: string };
+  }) =>
+    `${o.shippingAddress?.firstName ?? ""} ${o.shippingAddress?.lastName ?? ""}`.trim() ||
+    o.user?.phone ||
+    "—";
 
   return (
-    <div className="space-y-6">
-      {/* Stats Grid */}
+    <div className="space-y-6" dir="rtl">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title} className="bg-card border-border">
@@ -103,174 +75,71 @@ export function DashboardOverview() {
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {stat.value}
-              </div>
-              <div className="flex items-center gap-1 text-xs">
-                {stat.change > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-success" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-destructive" />
-                )}
-                <span
-                  className={
-                    stat.change > 0 ? "text-success" : "text-destructive"
-                  }
-                >
-                  {stat.change > 0 ? "+" : ""}
-                  {stat.change}%
-                </span>
-                <span className="text-muted-foreground">from last month</span>
-              </div>
+              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Charts and Tables */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Revenue Chart */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">Revenue Overview</CardTitle>
-            <CardDescription>
-              Monthly revenue for the past 6 months
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient
-                      id="colorRevenue"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="oklch(0.72 0.18 160)"
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="oklch(0.72 0.18 160)"
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="oklch(0.28 0.01 250)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="month"
-                    stroke="oklch(0.65 0 0)"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="oklch(0.65 0 0)"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `$${value / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "oklch(0.18 0.01 250)",
-                      border: "1px solid oklch(0.28 0.01 250)",
-                      borderRadius: "8px",
-                      color: "oklch(0.95 0 0)",
-                    }}
-                    formatter={(value: number) => [
-                      `$${value.toLocaleString()}`,
-                      "Revenue",
-                    ]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="oklch(0.72 0.18 160)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-foreground">سفارش‌های اخیر</CardTitle>
+            <CardDescription>آخرین سفارش‌های مشتریان</CardDescription>
+          </div>
+          <Link href="/orders">
+            <Button variant="ghost" size="sm" className="gap-1">
+              مشاهده همه <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {ordersLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Orders */}
-        <Card className="bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-foreground">Recent Orders</CardTitle>
-              <CardDescription>Latest customer orders</CardDescription>
-            </div>
-            <Link href="/orders">
-              <Button variant="ghost" size="sm" className="gap-1">
-                View All <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          ) : recentOrders.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">سفارشی ثبت نشده است.</p>
+          ) : (
+            <div className="space-y-3">
               {recentOrders.map((order) => (
                 <div
                   key={order.id}
                   className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3"
                 >
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {order.orderNumber}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {order.customer}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">#{order.id.slice(0, 8)}</p>
+                    <p className="text-xs text-muted-foreground">{customerName(order)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">
-                      ${order.total.toFixed(2)}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs capitalize ${getStatusColor(order.status)}`}
-                    >
-                      {order.status}
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-foreground">{toman(order.finalAmount)}</p>
+                    <Badge variant="outline" className={`text-xs ${STATUS_FA[order.status]?.className ?? ""}`}>
+                      {STATUS_FA[order.status]?.label ?? order.status}
                     </Badge>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Low Stock Alert */}
-      {lowStockProducts.length > 0 && (
+      {lowStock.length > 0 && (
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-foreground">Low Stock Alert</CardTitle>
-              <CardDescription>
-                Products with variants below 50 units
-              </CardDescription>
+              <CardTitle className="text-foreground">هشدار موجودی کم</CardTitle>
+              <CardDescription>محصولات با موجودی کمتر از ۱۰ عدد</CardDescription>
             </div>
             <Link href="/products">
               <Button variant="ghost" size="sm" className="gap-1">
-                Manage Stock <ArrowRight className="h-4 w-4" />
+                مدیریت محصولات <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {lowStockProducts.map((product) => (
+              {lowStock.map((product) => (
                 <div
                   key={product.id}
                   className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-3"
@@ -279,22 +148,13 @@ export function DashboardOverview() {
                     <Package className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {product.name}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {product.variants
-                        .filter((v) => v.stock < 50)
-                        .map((v) => (
-                          <Badge
-                            key={v.id}
-                            variant="outline"
-                            className="text-xs bg-warning/20 text-warning border-warning/30"
-                          >
-                            {v.size}: {v.stock} left
-                          </Badge>
-                        ))}
-                    </div>
+                    <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
+                    <Badge
+                      variant="outline"
+                      className="text-xs mt-1 bg-amber-500/15 text-amber-600 border-amber-500/30"
+                    >
+                      {(product.stock ?? 0).toLocaleString("fa-IR")} عدد باقی‌مانده
+                    </Badge>
                   </div>
                 </div>
               ))}

@@ -36,131 +36,95 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Search,
-  MoreHorizontal,
   Eye,
-  Truck,
-  Package,
-  CheckCircle,
-  XCircle,
-  Clock,
   MapPin,
-  Mail,
-  User,
+  Package,
   Loader2,
+  PawPrint,
 } from "lucide-react";
-import { useOrders, useUpdateOrder, type UpdateOrderInput } from "@/lib/hooks/use-orders";
+import { useOrders } from "@/features/order/queries";
+import { useUpdateOrderStatus } from "@/features/order/mutations";
+import type { OrderStatus } from "@/features/order/order-api";
 
-const statusOptions = [
-  { value: "pending", label: "Pending", icon: Clock },
-  { value: "processing", label: "Processing", icon: Package },
-  { value: "shipped", label: "Shipped", icon: Truck },
-  { value: "delivered", label: "Delivered", icon: CheckCircle },
-  { value: "cancelled", label: "Cancelled", icon: XCircle },
-] as const;
+const STATUS: { value: OrderStatus; label: string; className: string }[] = [
+  { value: "pending", label: "در انتظار", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+  { value: "confirmed", label: "تأییدشده", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
+  { value: "processing", label: "در حال پردازش", className: "bg-blue-400/15 text-blue-500 border-blue-400/30" },
+  { value: "shipped", label: "ارسال‌شده", className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30" },
+  { value: "delivered", label: "تحویل‌شده", className: "bg-green-500/15 text-green-600 border-green-500/30" },
+  { value: "cancelled", label: "لغوشده", className: "bg-red-500/15 text-red-600 border-red-500/30" },
+  { value: "refunded", label: "مرجوع‌شده", className: "bg-gray-500/15 text-gray-600 border-gray-500/30" },
+];
 
-type OrderStatus = typeof statusOptions[number]["value"];
+const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
+const statusMeta = (s: string) => STATUS.find((x) => x.value === s);
+const customerName = (o: {
+  shippingAddress?: { firstName?: string; lastName?: string };
+  user?: { firstName?: string; lastName?: string; phone?: string };
+}) => {
+  const a = o.shippingAddress;
+  if (a?.firstName || a?.lastName) return `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim();
+  if (o.user?.firstName || o.user?.lastName)
+    return `${o.user.firstName ?? ""} ${o.user.lastName ?? ""}`.trim();
+  return o.user?.phone ?? "—";
+};
 
 export default function OrdersPage() {
-  const { data: orders = [], isLoading } = useOrders();
-  const updateMutation = useUpdateOrder("");
+  const { data: response, isLoading } = useOrders();
+  const orders = response?.data ?? [];
+  const updateStatus = useUpdateOrderStatus();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId);
+  const selectedOrder = orders.find((o) => o.id === selectedId);
 
-  const filteredOrders = orders.filter((order) => {
+  const filtered = orders.filter((order) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
+      order.id.toLowerCase().includes(q) ||
+      customerName(order).toLowerCase().includes(q) ||
+      (order.user?.phone ?? "").includes(q);
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    await updateMutation.mutateAsync(orderId, { status: newStatus });
-  };
-
-  const openOrderDetail = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setIsDetailOpen(true);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "pending":
-        return "bg-warning/20 text-warning border-warning/30";
-      case "processing":
-        return "bg-blue-500/20 text-blue-500 border-blue-500/30";
-      case "shipped":
-        return "bg-blue-400/20 text-blue-400 border-blue-400/30";
-      case "delivered":
-        return "bg-success/20 text-success border-success/30";
-      case "cancelled":
-        return "bg-destructive/20 text-destructive border-destructive/30";
-      default:
-        return "bg-muted text-muted-foreground border-muted";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    const option = statusOptions.find((opt) => opt.value === status);
-    return option ? option.icon : Clock;
-  };
-
   return (
-    <div className="flex flex-col">
-      <Header
-        title="Orders"
-        description="Track and manage customer orders and shipments."
-      />
+    <div className="flex flex-col" dir="rtl">
+      <Header title="سفارش‌ها" description="پیگیری و مدیریت سفارش‌های مشتریان." />
       <div className="flex-1 p-6 space-y-6">
-        {/* Actions Bar */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search orders..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-input"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px] bg-input">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {statusOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="جستجوی سفارش..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-9 bg-input"
+            />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[170px] bg-input">
+              <SelectValue placeholder="وضعیت" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">همه‌ی وضعیت‌ها</SelectItem>
+              {STATUS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Orders Table */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">All Orders</CardTitle>
-            <CardDescription>
-              {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""} found
-            </CardDescription>
+            <CardTitle className="text-foreground">همه‌ی سفارش‌ها</CardTitle>
+            <CardDescription>{filtered.length.toLocaleString("fa-IR")} سفارش</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -171,58 +135,43 @@ export default function OrdersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">
-                      Order Number
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">
-                      Customer
-                    </TableHead>
-                    <TableHead className="text-muted-foreground">Total</TableHead>
-                    <TableHead className="text-muted-foreground">Date</TableHead>
-                    <TableHead className="text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-muted-foreground text-right">
-                      Actions
-                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">شماره سفارش</TableHead>
+                    <TableHead className="text-muted-foreground text-right">مشتری</TableHead>
+                    <TableHead className="text-muted-foreground text-right">مبلغ</TableHead>
+                    <TableHead className="text-muted-foreground text-right">تاریخ</TableHead>
+                    <TableHead className="text-muted-foreground text-right">وضعیت</TableHead>
+                    <TableHead className="text-muted-foreground text-left">عملیات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
+                  {filtered.map((order) => (
                     <TableRow key={order.id} className="border-border">
                       <TableCell className="font-medium text-foreground">
-                        {order.orderNumber}
+                        #{order.id.slice(0, 8)}
                       </TableCell>
-                      <TableCell className="text-foreground">
-                        {order.customer}
-                      </TableCell>
+                      <TableCell className="text-foreground">{customerName(order)}</TableCell>
                       <TableCell className="text-foreground font-semibold">
-                        ${order.total.toFixed(2)}
+                        {toman(order.finalAmount)}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString("fa-IR")}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`capitalize ${getStatusColor(order.status)}`}
-                        >
-                          {order.status}
+                        <Badge variant="outline" className={statusMeta(order.status)?.className}>
+                          {statusMeta(order.status)?.label ?? order.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openOrderDetail(order.id)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" /> View Details
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-left">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedId(order.id);
+                            setIsDetailOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -233,99 +182,84 @@ export default function OrdersPage() {
         </Card>
       </div>
 
-      {/* Order Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
-            <DialogDescription>
-              {selectedOrder?.orderNumber}
-            </DialogDescription>
+            <DialogTitle>جزئیات سفارش</DialogTitle>
+            <DialogDescription>#{selectedOrder?.id.slice(0, 8)}</DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (
             <div className="space-y-6 py-4">
-              {/* Status Update */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-foreground">Update Status</h4>
+                <h4 className="font-semibold text-foreground">تغییر وضعیت</h4>
                 <div className="flex flex-wrap gap-2">
-                  {statusOptions.map((opt) => (
+                  {STATUS.map((opt) => (
                     <Button
                       key={opt.value}
-                      variant={
-                        selectedOrder.status === opt.value
-                          ? "default"
-                          : "outline"
-                      }
+                      variant={selectedOrder.status === opt.value ? "default" : "outline"}
                       size="sm"
                       onClick={() =>
-                        handleStatusChange(selectedOrder.id, opt.value)
+                        updateStatus.mutate({ id: selectedOrder.id, status: opt.value })
                       }
-                      disabled={updateMutation.isPending}
+                      disabled={updateStatus.isPending}
                     >
-                      {updateMutation.isPending && selectedOrder.status === opt.value ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <opt.icon className="h-4 w-4 mr-2" />
-                      )}
                       {opt.label}
                     </Button>
                   ))}
                 </div>
               </div>
 
-              {/* Customer Info */}
               <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="font-semibold text-foreground">Customer Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3">
-                    <User className="h-5 w-5 text-muted-foreground mt-1" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Name</p>
-                      <p className="font-medium text-foreground">
-                        {selectedOrder.customer}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Mail className="h-5 w-5 text-muted-foreground mt-1" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium text-foreground">
-                        {selectedOrder.email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Shipping Address */}
-              <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="font-semibold text-foreground">
-                  Shipping Address
-                </h4>
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-muted-foreground mt-1" />
+                <h4 className="font-semibold text-foreground">اطلاعات گیرنده</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-foreground">
-                      {selectedOrder.shippingAddress.street}
-                    </p>
-                    <p className="text-foreground">
-                      {selectedOrder.shippingAddress.city},{" "}
-                      {selectedOrder.shippingAddress.state}{" "}
-                      {selectedOrder.shippingAddress.zip}
-                    </p>
+                    <p className="text-muted-foreground">نام</p>
+                    <p className="font-medium text-foreground">{customerName(selectedOrder)}</p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">موبایل</p>
+                    <p className="font-medium text-foreground">{selectedOrder.user?.phone ?? "—"}</p>
+                  </div>
+                  {selectedOrder.shippingAddress?.petName && (
+                    <div className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-muted-foreground">نام حیوان</p>
+                        <p className="font-medium text-foreground">
+                          {selectedOrder.shippingAddress.petName}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Order Items */}
+              {selectedOrder.shippingAddress && (
+                <div className="space-y-2 border-t border-border pt-4">
+                  <h4 className="font-semibold text-foreground">آدرس تحویل</h4>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-1" />
+                    <p className="text-foreground">
+                      {[
+                        selectedOrder.shippingAddress.city,
+                        selectedOrder.shippingAddress.address,
+                        selectedOrder.shippingAddress.plaque &&
+                          `پلاک ${selectedOrder.shippingAddress.plaque}`,
+                      ]
+                        .filter(Boolean)
+                        .join("، ")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="font-semibold text-foreground">Order Items</h4>
+                <h4 className="font-semibold text-foreground">اقلام سفارش</h4>
                 <div className="space-y-2">
-                  {selectedOrder.items.map((item, idx) => (
+                  {selectedOrder.items.map((item) => (
                     <div
-                      key={idx}
+                      key={item.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border"
                     >
                       <div className="flex items-center gap-3">
@@ -333,30 +267,31 @@ export default function OrdersPage() {
                           <Package className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">
-                            {item.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Qty: {item.quantity}
-                          </p>
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-xs text-muted-foreground">تعداد: {item.quantity}</p>
                         </div>
                       </div>
-                      <p className="font-semibold text-foreground">
-                        ${item.price.toFixed(2)}
-                      </p>
+                      <p className="font-semibold text-foreground">{toman(item.totalPrice)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Order Total */}
-              <div className="border-t border-border pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-foreground">
-                    Total
-                  </span>
+              <div className="border-t border-border pt-4 space-y-1 text-sm">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>جمع کل</span>
+                  <span>{toman(selectedOrder.totalAmount)}</span>
+                </div>
+                {selectedOrder.discountAmount > 0 && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>تخفیف</span>
+                    <span>−{toman(selectedOrder.discountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-lg font-semibold text-foreground">مبلغ نهایی</span>
                   <span className="text-2xl font-bold text-primary">
-                    ${selectedOrder.total.toFixed(2)}
+                    {toman(selectedOrder.finalAmount)}
                   </span>
                 </div>
               </div>
@@ -365,7 +300,7 @@ export default function OrdersPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-              Close
+              بستن
             </Button>
           </DialogFooter>
         </DialogContent>

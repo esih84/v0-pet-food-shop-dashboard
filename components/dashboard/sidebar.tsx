@@ -8,6 +8,9 @@ import {
   Package,
   Image,
   FolderOpen,
+  FolderTree,
+  Ticket,
+  Users,
   FileText,
   ShoppingCart,
   MessageSquare,
@@ -20,21 +23,26 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/mutations";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/products", label: "Products", icon: Package },
-  { href: "/banners", label: "Banners", icon: Image },
-  { href: "/collections", label: "Collections", icon: FolderOpen },
-  { href: "/blogs", label: "Blogs", icon: FileText },
-  { href: "/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/comments", label: "Comments", icon: MessageSquare },
-  { href: "/sms", label: "SMS Management", icon: MessageCircle },
+  { href: "/", label: "داشبورد", icon: LayoutDashboard },
+  { href: "/products", label: "محصولات", icon: Package },
+  { href: "/categories", label: "دسته‌بندی‌ها", icon: FolderTree },
+  { href: "/orders", label: "سفارش‌ها", icon: ShoppingCart },
+  { href: "/customers", label: "مشتریان", icon: Users },
+  { href: "/coupons", label: "کدهای تخفیف", icon: Ticket },
+  { href: "/banners", label: "بنرها", icon: Image },
+  { href: "/collections", label: "کالکشن‌ها", icon: FolderOpen },
+  { href: "/blogs", label: "بلاگ", icon: FileText },
+  { href: "/comments", label: "نظرات", icon: MessageSquare },
+  { href: "/sms", label: "پیامک", icon: MessageCircle },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { logout, logoutPending } = useAuth();
 
   return (
     <aside
@@ -49,7 +57,7 @@ export function Sidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <PawPrint className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">PetFood Admin</span>
+            <span className="font-semibold text-foreground">پنل مدیریت</span>
           </Link>
         )}
         {collapsed && (
@@ -101,15 +109,17 @@ export function Sidebar() {
           )}
         >
           <Settings className="h-5 w-5 flex-shrink-0" />
-          {!collapsed && <span>Settings</span>}
+          {!collapsed && <span>تنظیمات</span>}
         </Link>
         <button
+          onClick={() => logout()}
+          disabled={logoutPending}
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground disabled:opacity-60"
           )}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          {!collapsed && <span>خروج</span>}
         </button>
       </div>
     </aside>

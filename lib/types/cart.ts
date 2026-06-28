@@ -1,13 +1,13 @@
 import type { User } from "./user";
-import type { ProductVariant } from "./product";
+import type { Product } from "./product";
 
 export type CartItem = {
   id: string;
 
   cartId: string;
-  variantId: string;
+  productId: string;
 
-  variant?: ProductVariant;
+  product?: Product;
 
   quantity: number;
   addedAt: string;

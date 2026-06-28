@@ -1,67 +1,61 @@
 import axios from "axios";
 
 /**
- * Auth Client - Handle authentication API calls
- * Separate from main axios instance to avoid circular dependency during token refresh
+ * Auth Client — ورود ادمین با OTP موبایل (مطابق بک‌اند).
+ * احراز هویت کوکی‌محور (httpOnly) است؛ بنابراین withCredentials روشن است
+ * و توکنی در سمت کلاینت ذخیره نمی‌شود.
  */
 
 const authAxios = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000",
+  baseURL:
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api/v1",
   timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  withCredentials: true,
+  headers: { "Content-Type": "application/json" },
 });
 
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    name?: string;
-  };
+export interface AdminUser {
+  id: string;
+  phone: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
 }
 
-export interface RefreshResponse {
-  accessToken: string;
-  refreshToken: string;
+export interface VerifyOtpResponse {
+  user: AdminUser;
+  isNewUser: boolean;
 }
 
 export const authClient = {
-  /**
-   * Login - Get access and refresh tokens
-   */
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await authAxios.post<LoginResponse>("/api/auth/login", {
-      email,
-      password,
-    });
-    return response.data;
+  /** ارسال کد یک‌بارمصرف به شماره‌ی موبایل */
+  sendOtp: async (phone: string): Promise<void> => {
+    await authAxios.post("/auth/send-otp", { phone });
   },
 
-  /**
-   * Refresh Token - Get new access token using refresh token
-   */
-  refreshToken: async (refreshToken: string): Promise<RefreshResponse> => {
-    const response = await authAxios.post<RefreshResponse>(
-      "/api/auth/refresh",
-      {
-        refreshToken,
-      }
-    );
-    return response.data;
+  /** تأیید کد و ست‌شدن کوکی‌های احراز هویت توسط بک‌اند */
+  verifyOtp: async (phone: string, code: string): Promise<VerifyOtpResponse> => {
+    const res = await authAxios.post("/auth/verify-otp", { phone, code });
+    return res.data.data as VerifyOtpResponse;
   },
 
-  /**
-   * Logout - Clear tokens on backend (optional)
-   */
+  /** تمدید کوکی‌ها با کوکی refresh */
+  refresh: async (): Promise<void> => {
+    await authAxios.post("/auth/refresh");
+  },
+
+  /** خروج و پاک‌کردن کوکی‌ها */
   logout: async (): Promise<void> => {
     try {
-      await authAxios.post("/api/auth/logout");
-    } catch (error) {
-      // Ignore logout errors - just clear local tokens
-      console.error("[v0] Logout error:", error);
+      await authAxios.post("/auth/logout");
+    } catch {
+      // خطای logout را نادیده می‌گیریم
     }
+  },
+
+  /** کاربر فعلی */
+  me: async (): Promise<AdminUser> => {
+    const res = await authAxios.get("/users/me");
+    return res.data.data as AdminUser;
   },
 };

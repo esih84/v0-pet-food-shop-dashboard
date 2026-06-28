@@ -3,7 +3,6 @@ export type {
   User,
   Role,
   Product,
-  ProductVariant,
   ProductAttribute,
   ProductImage,
   Discount,

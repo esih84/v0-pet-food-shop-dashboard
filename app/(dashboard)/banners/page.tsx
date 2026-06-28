@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -36,12 +37,12 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
+import { useBanners } from "@/features/banner/queries";
 import {
-  useBanners,
   useCreateBanner,
   useUpdateBanner,
   useDeleteBanner,
-} from "@/lib/hooks/use-banners";
+} from "@/features/banner/mutations";
 
 export default function BannersPage() {
   const { data: banners = [], isLoading } = useBanners();
@@ -52,63 +53,65 @@ export default function BannersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBannerId, setEditingBannerId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     title: "",
     description: "",
     imageUrl: "",
-    mobileImageUrl: "",
     link: "",
     position: "home",
-    order: banners.length + 1,
+    order: 1,
     isActive: true,
-  });
+  };
+  const [formData, setFormData] = useState(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [mobileImageFile, setMobileImageFile] = useState<File | null>(null);
 
   const editingBanner = banners.find((b) => b.id === editingBannerId);
 
   const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      imageUrl: "",
-      mobileImageUrl: "",
-      link: "",
-      position: "home",
-      order: banners.length + 1,
-      isActive: true,
-    });
+    setFormData({ ...emptyForm, order: banners.length + 1 });
+    setImageFile(null);
+    setMobileImageFile(null);
     setEditingBannerId(null);
   };
 
   const openEditDialog = (bannerId: string) => {
     setEditingBannerId(bannerId);
     const banner = banners.find((b) => b.id === bannerId);
-
     if (banner) {
       setFormData({
         title: banner.title || "",
         description: banner.description || "",
         imageUrl: banner.imageUrl || "",
-        mobileImageUrl: banner.mobileImageUrl || "",
         link: banner.link || "",
         position: banner.position || "home",
         order: banner.order || 1,
         isActive: banner.isActive ?? true,
       });
+      setImageFile(null);
+      setMobileImageFile(null);
       setIsDialogOpen(true);
     }
   };
 
   const handleSubmit = async () => {
     try {
+      const payload = {
+        title: formData.title,
+        description: formData.description || undefined,
+        imageUrl: formData.imageUrl || undefined,
+        link: formData.link || undefined,
+        position: formData.position || undefined,
+        order: formData.order,
+        isActive: formData.isActive,
+        image: imageFile ?? undefined,
+        mobileImage: mobileImageFile ?? undefined,
+      };
       if (editingBannerId) {
-        await updateMutation.mutateAsync({
-          id: editingBannerId,
-          data: formData,
-        });
+        await updateMutation.mutateAsync({ id: editingBannerId, data: payload });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(payload);
       }
-
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
@@ -117,26 +120,25 @@ export default function BannersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteMutation.mutateAsync(id);
+    if (confirm("حذف این بنر؟")) await deleteMutation.mutateAsync(id);
   };
 
   const toggleActive = async (bannerId: string) => {
     const banner = banners.find((b) => b.id === bannerId);
     if (!banner) return;
-
     await updateMutation.mutateAsync({
       id: bannerId,
-      data: {
-        isActive: !banner.isActive,
-      },
+      data: { isActive: !banner.isActive },
     });
   };
 
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" dir="rtl">
       <Header
-        title="Banners"
-        description="Manage promotional banners displayed on your storefront."
+        title="بنرها"
+        description="مدیریت بنرهای تبلیغاتی نمایش‌داده‌شده در فروشگاه."
       />
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
@@ -150,46 +152,79 @@ export default function BannersPage() {
           >
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus className="h-4 w-4" /> Add Banner
+                <Plus className="h-4 w-4" /> افزودن بنر
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto" dir="rtl">
               <DialogHeader>
                 <DialogTitle>
-                  {editingBanner ? "Edit Banner" : "Add New Banner"}
+                  {editingBanner ? "ویرایش بنر" : "افزودن بنر جدید"}
                 </DialogTitle>
                 <DialogDescription>
                   {editingBanner
-                    ? "Update banner details."
-                    : "Create a new promotional banner."}
+                    ? "اطلاعات بنر را به‌روزرسانی کنید."
+                    : "یک بنر تبلیغاتی جدید بسازید."}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Banner Title</Label>
+                  <Label htmlFor="title">عنوان بنر</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
                     }
-                    placeholder="Summer Sale"
+                    placeholder="حراج تابستانه"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">توضیحات</Label>
                   <Input
                     id="description"
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Get 50% off pet food"
+                    placeholder="۵۰٪ تخفیف روی غذای حیوانات"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Label htmlFor="image">تصویر بنر (دسکتاپ)</Label>
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setImageFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {imageFile && (
+                    <p className="text-xs text-muted-foreground">
+                      انتخاب‌شده: {imageFile.name}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mobileImage">تصویر بنر (موبایل)</Label>
+                  <Input
+                    id="mobileImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setMobileImageFile(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {mobileImageFile && (
+                    <p className="text-xs text-muted-foreground">
+                      انتخاب‌شده: {mobileImageFile.name}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imageUrl">یا آدرس تصویر (URL)</Label>
                   <Input
                     id="imageUrl"
                     value={formData.imageUrl}
@@ -197,25 +232,12 @@ export default function BannersPage() {
                       setFormData({ ...formData, imageUrl: e.target.value })
                     }
                     placeholder="https://example.com/banner.jpg"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mobileImageUrl">Mobile Image URL</Label>
-                  <Input
-                    id="mobileImageUrl"
-                    value={formData.mobileImageUrl}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mobileImageUrl: e.target.value,
-                      })
-                    }
-                    placeholder="https://example.com/banner-mobile.jpg"
+                    dir="ltr"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="link">Link URL</Label>
+                  <Label htmlFor="link">لینک مقصد</Label>
                   <Input
                     id="link"
                     value={formData.link}
@@ -223,71 +245,65 @@ export default function BannersPage() {
                       setFormData({ ...formData, link: e.target.value })
                     }
                     placeholder="https://example.com/sale"
+                    dir="ltr"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
-                    value={formData.position}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    placeholder="home"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="order">Order</Label>
-                  <Input
-                    id="order"
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        order: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    placeholder="1"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="position">جایگاه</Label>
+                    <Input
+                      id="position"
+                      value={formData.position}
+                      onChange={(e) =>
+                        setFormData({ ...formData, position: e.target.value })
+                      }
+                      placeholder="home"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="order">ترتیب</Label>
+                    <Input
+                      id="order"
+                      type="number"
+                      value={formData.order}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          order: parseInt(e.target.value) || 1,
+                        })
+                      }
+                      placeholder="1"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Switch
                     id="isActive"
                     checked={formData.isActive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isActive: e.target.checked })
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isActive: checked })
                     }
-                    className="w-4 h-4"
                   />
-                  <Label htmlFor="isActive">Active</Label>
+                  <Label htmlFor="isActive">بنر فعال باشد</Label>
                 </div>
               </div>
 
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  انصراف
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  {createMutation.isPending || updateMutation.isPending ? (
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                  {isSaving ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                      در حال ذخیره...
                     </>
                   ) : editingBanner ? (
-                    "Update Banner"
+                    "به‌روزرسانی بنر"
                   ) : (
-                    "Create Banner"
+                    "ایجاد بنر"
                   )}
                 </Button>
               </DialogFooter>
@@ -298,9 +314,9 @@ export default function BannersPage() {
         {/* Banners Grid */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">All Banners</CardTitle>
+            <CardTitle className="text-foreground">همه بنرها</CardTitle>
             <CardDescription>
-              {banners.length} banner{banners.length !== 1 ? "s" : ""} total
+              مجموعاً {banners.length.toLocaleString("fa-IR")} بنر
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -317,6 +333,7 @@ export default function BannersPage() {
                   >
                     <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
                       {banner.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={banner.imageUrl}
                           alt={banner.title}
@@ -335,18 +352,20 @@ export default function BannersPage() {
                           {banner.description}
                         </p>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <Badge variant="outline">{banner.position}</Badge>
-                        <Badge variant="outline">#{banner.order}</Badge>
+                        <Badge variant="outline">
+                          #{banner.order.toLocaleString("fa-IR")}
+                        </Badge>
                         <Badge
                           variant="outline"
                           className={
                             banner.isActive
-                              ? "bg-success/20 text-success border-success/30"
+                              ? "bg-green-500/15 text-green-600 border-green-500/30"
                               : "bg-muted text-muted-foreground"
                           }
                         >
-                          {banner.isActive ? "Active" : "Inactive"}
+                          {banner.isActive ? "فعال" : "غیرفعال"}
                         </Badge>
                       </div>
                       <div className="flex gap-2">
@@ -356,7 +375,7 @@ export default function BannersPage() {
                           className="flex-1"
                           onClick={() => toggleActive(banner.id)}
                         >
-                          {banner.isActive ? "Deactivate" : "Activate"}
+                          {banner.isActive ? "غیرفعال‌کردن" : "فعال‌کردن"}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -368,13 +387,13 @@ export default function BannersPage() {
                             <DropdownMenuItem
                               onClick={() => openEditDialog(banner.id)}
                             >
-                              <Pencil className="h-4 w-4 mr-2" /> Edit
+                              <Pencil className="h-4 w-4 ml-2" /> ویرایش
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDelete(banner.id)}
                               className="text-destructive"
                             >
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              <Trash2 className="h-4 w-4 ml-2" /> حذف
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

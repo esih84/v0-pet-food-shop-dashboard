@@ -2,17 +2,12 @@
 
 import { useState } from "react";
 import { Header } from "@/components/dashboard/header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -23,13 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,44 +31,48 @@ import {
   Pencil,
   Trash2,
   FolderOpen,
-  Package,
   Loader2,
 } from "lucide-react";
+import { useCollections } from "@/features/collection/queries";
 import {
-  useCollections,
   useCreateCollection,
   useUpdateCollection,
   useDeleteCollection,
-} from "@/lib/hooks/use-collections";
+} from "@/features/collection/mutations";
+
+function slugify(s: string) {
+  return s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w؀-ۿ-]/g, "");
+}
 
 export default function CollectionsPage() {
   const { data: collections = [], isLoading } = useCollections();
   const createMutation = useCreateCollection();
-  const updateMutation = useUpdateCollection("");
-  const deleteMutation = useDeleteCollection("");
+  const updateMutation = useUpdateCollection();
+  const deleteMutation = useDeleteCollection();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(
+    null,
+  );
 
   const [formData, setFormData] = useState({
     name: "",
+    slug: "",
     description: "",
-    status: "active" as "active" | "draft",
+    isActive: true,
   });
 
-  const editingCollection = collections.find((c) => c.id === editingCollectionId);
+  const editingCollection = collections.find(
+    (c) => c.id === editingCollectionId,
+  );
 
   const filteredCollections = collections.filter((collection) =>
-    collection.name.toLowerCase().includes(searchQuery.toLowerCase())
+    collection.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      status: "active",
-    });
+    setFormData({ name: "", slug: "", description: "", isActive: true });
     setEditingCollectionId(null);
   };
 
@@ -90,43 +82,52 @@ export default function CollectionsPage() {
     if (collection) {
       setFormData({
         name: collection.name,
-        description: collection.description,
-        status: collection.status,
+        slug: collection.slug,
+        description: collection.description ?? "",
+        isActive: collection.isActive,
       });
       setIsDialogOpen(true);
     }
   };
 
   const handleSubmit = async () => {
-    if (editingCollection) {
-      await updateMutation.mutateAsync(editingCollectionId!, formData);
+    const payload = {
+      name: formData.name,
+      slug: formData.slug || slugify(formData.name),
+      description: formData.description || undefined,
+      isActive: formData.isActive,
+    };
+    if (editingCollectionId) {
+      await updateMutation.mutateAsync({ id: editingCollectionId, data: payload });
     } else {
-      await createMutation.mutateAsync(formData);
+      await createMutation.mutateAsync(payload);
     }
     setIsDialogOpen(false);
     resetForm();
   };
 
   const handleDelete = async (id: string) => {
-    await deleteMutation.mutateAsync(id);
+    if (confirm("حذف این کالکشن؟")) await deleteMutation.mutateAsync(id);
   };
 
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col" dir="rtl">
       <Header
-        title="Collections"
-        description="Organize your pet food products into collections."
+        title="کالکشن‌ها"
+        description="محصولات را در قالب کالکشن دسته‌بندی کنید."
       />
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search collections..."
+              placeholder="جستجوی کالکشن..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-input"
+              className="pr-9 bg-input"
             />
           </div>
           <Dialog
@@ -138,78 +139,89 @@ export default function CollectionsPage() {
           >
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus className="h-4 w-4" /> Add Collection
+                <Plus className="h-4 w-4" /> افزودن کالکشن
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg" dir="rtl">
               <DialogHeader>
                 <DialogTitle>
-                  {editingCollection ? "Edit Collection" : "Add New Collection"}
+                  {editingCollection ? "ویرایش کالکشن" : "افزودن کالکشن جدید"}
                 </DialogTitle>
                 <DialogDescription>
                   {editingCollection
-                    ? "Update collection details."
-                    : "Create a new collection to organize your products."}
+                    ? "اطلاعات کالکشن را به‌روزرسانی کنید."
+                    : "یک کالکشن جدید برای دسته‌بندی محصولات بسازید."}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Collection Name</Label>
+                  <Label htmlFor="name">نام کالکشن</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({
+                        ...formData,
+                        name: e.target.value,
+                        slug: editingCollection
+                          ? formData.slug
+                          : slugify(e.target.value),
+                      })
                     }
-                    placeholder="Dog Food"
+                    placeholder="غذای سگ"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="slug">نامک (slug)</Label>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) =>
+                      setFormData({ ...formData, slug: e.target.value })
+                    }
+                    placeholder="dog-food"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">توضیحات</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Premium nutrition for your canine companion"
+                    placeholder="تغذیه‌ی باکیفیت برای همراه چهارپای شما"
                     rows={3}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: "active" | "draft") =>
-                      setFormData({ ...formData, status: value })
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isActive: checked })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
+                  <Label htmlFor="isActive">کالکشن فعال باشد</Label>
                 </div>
               </div>
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
+                  انصراف
                 </Button>
-                <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                  {createMutation.isPending || updateMutation.isPending ? (
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                  {isSaving ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                      در حال ذخیره...
                     </>
                   ) : editingCollection ? (
-                    "Update Collection"
+                    "به‌روزرسانی کالکشن"
                   ) : (
-                    "Create Collection"
+                    "ایجاد کالکشن"
                   )}
                 </Button>
               </DialogFooter>
@@ -225,7 +237,10 @@ export default function CollectionsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredCollections.map((collection) => (
-              <Card key={collection.id} className="bg-card border-border overflow-hidden">
+              <Card
+                key={collection.id}
+                className="bg-card border-border overflow-hidden"
+              >
                 <div className="h-32 bg-muted flex items-center justify-center">
                   <FolderOpen className="h-12 w-12 text-muted-foreground" />
                 </div>
@@ -242,30 +257,36 @@ export default function CollectionsPage() {
                         <Badge
                           variant="outline"
                           className={
-                            collection.status === "active"
-                              ? "bg-success/20 text-success border-success/30"
-                              : "bg-warning/20 text-warning border-warning/30"
+                            collection.isActive
+                              ? "bg-green-500/15 text-green-600 border-green-500/30"
+                              : "bg-muted text-muted-foreground border-muted"
                           }
                         >
-                          {collection.status}
+                          {collection.isActive ? "فعال" : "غیرفعال"}
                         </Badge>
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(collection.id)}>
-                          <Pencil className="h-4 w-4 mr-2" /> Edit
+                        <DropdownMenuItem
+                          onClick={() => openEditDialog(collection.id)}
+                        >
+                          <Pencil className="h-4 w-4 ml-2" /> ویرایش
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(collection.id)}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          <Trash2 className="h-4 w-4 ml-2" /> حذف
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
