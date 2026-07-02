@@ -30,6 +30,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  BANNER_POSITION_OPTIONS,
+  bannerPositionLabel,
+} from "@/lib/types/banner";
+import {
   Plus,
   MoreHorizontal,
   Pencil,
@@ -58,7 +69,7 @@ export default function BannersPage() {
     description: "",
     imageUrl: "",
     link: "",
-    position: "home",
+    position: "home_main",
     order: 1,
     isActive: true,
   };
@@ -84,7 +95,7 @@ export default function BannersPage() {
         description: banner.description || "",
         imageUrl: banner.imageUrl || "",
         link: banner.link || "",
-        position: banner.position || "home",
+        position: banner.position || "home_main",
         order: banner.order || 1,
         isActive: banner.isActive ?? true,
       });
@@ -251,15 +262,23 @@ export default function BannersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="position">جایگاه</Label>
-                    <Input
-                      id="position"
+                    <Select
                       value={formData.position}
-                      onChange={(e) =>
-                        setFormData({ ...formData, position: e.target.value })
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, position: value })
                       }
-                      placeholder="home"
-                      dir="ltr"
-                    />
+                    >
+                      <SelectTrigger id="position">
+                        <SelectValue placeholder="انتخاب جایگاه" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BANNER_POSITION_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="order">ترتیب</Label>
@@ -353,7 +372,9 @@ export default function BannersPage() {
                         </p>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <Badge variant="outline">{banner.position}</Badge>
+                        <Badge variant="outline">
+                          {bannerPositionLabel(banner.position)}
+                        </Badge>
                         <Badge variant="outline">
                           #{banner.order.toLocaleString("fa-IR")}
                         </Badge>

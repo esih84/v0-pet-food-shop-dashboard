@@ -41,9 +41,25 @@ export const productService = {
     return res.data.data;
   },
 
+  // لیست همه‌ی محصولات (شامل غیرفعال) برای پنل ادمین
+  async getAdminProducts(page = 1, limit = 50) {
+    const res = await axiosInstance.get<ApiResponse<PaginatedResult<Product>>>(
+      `/products/admin/all?page=${page}&limit=${limit}`,
+    );
+    return res.data.data;
+  },
+
   async getProduct(id: string) {
     const res = await axiosInstance.get<ApiResponse<Product>>(
       `/products/${id}`,
+    );
+    return res.data.data;
+  },
+
+  // دریافت یک محصول برای پنل ادمین (شامل غیرفعال) — برای فرم ویرایش
+  async getAdminProduct(id: string) {
+    const res = await axiosInstance.get<ApiResponse<Product>>(
+      `/products/admin/${id}`,
     );
     return res.data.data;
   },
@@ -66,5 +82,22 @@ export const productService = {
 
   async deleteProduct(id: string) {
     await axiosInstance.delete(`/products/${id}`);
+  },
+
+  // حذف یک تصویر محصول
+  async deleteProductImage(productId: string, imageId: string) {
+    const res = await axiosInstance.delete<ApiResponse<Product>>(
+      `/products/${productId}/images/${imageId}`,
+    );
+    return res.data.data;
+  },
+
+  // تغییر ترتیب تصاویر محصول (اولین تصویر، تصویر اصلی)
+  async reorderProductImages(productId: string, imageIds: string[]) {
+    const res = await axiosInstance.patch<ApiResponse<Product>>(
+      `/products/${productId}/images/reorder`,
+      { imageIds },
+    );
+    return res.data.data;
   },
 };

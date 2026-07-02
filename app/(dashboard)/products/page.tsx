@@ -54,20 +54,41 @@ import {
   Package,
   X,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useProducts } from "@/features/product/queries";
+import { useAdminProducts } from "@/features/product/queries";
 import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useDeleteProductImage,
+  useReorderProductImages,
 } from "@/features/product/mutations";
 import { useCategories } from "@/features/category/queries";
-import type { ProductAttribute } from "@/lib/types/product";
+import { productService } from "@/features/product/product-api";
+import type { ProductAttribute, ProductImage } from "@/lib/types/product";
+
+/** آدرس تصویر اصلی (یا اولین تصویر) محصول را برمی‌گرداند. */
+const primaryImageUrl = (images?: ProductImage[]): string | undefined => {
+  if (!images?.length) return undefined;
+  const primary = images.find((img) => img.isPrimary) ?? images[0];
+  return primary.thumbnailUrl ?? primary.url;
+};
+
+/** ساخت اسلاگ از روی نام (فارسی/انگلیسی) برای پیشنهاد خودکار */
+const slugify = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9؀-ۿ-]/g, "")
+    .replace(/-+/g, "-");
 
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
 export default function ProductsPage() {
-  const { data, isLoading, error } = useProducts();
+  const { data, isLoading, error } = useAdminProducts();
   const { data: categories = [] } = useCategories();
 
   const products = data?.data ?? [];
@@ -75,15 +96,21 @@ export default function ProductsPage() {
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
+  const deleteImageMutation = useDeleteProductImage();
+  const reorderImagesMutation = useReorderProductImages();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  // وقتی کاربر slug را دستی تغییر دهد، دیگر از روی نام تولید نمی‌شود
+  const [slugTouched, setSlugTouched] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     name: "",
+    slug: "",
     description: "",
     categoryId: "",
     basePrice: 0,
@@ -95,6 +122,8 @@ export default function ProductsPage() {
     { key: "", value: "" },
   ]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  // تصاویر فعلی محصول در حالت ویرایش (فقط برای نمایش)
+  const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
 
   const editingProduct = products.find((p) => p.id === editingProductId);
 
@@ -113,6 +142,7 @@ export default function ProductsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
+      slug: "",
       description: "",
       categoryId: "",
       basePrice: 0,
@@ -122,15 +152,25 @@ export default function ProductsPage() {
     });
     setAttributes([{ key: "", value: "" }]);
     setImageFiles([]);
+    setExistingImages([]);
     setEditingProductId(null);
+    setSlugTouched(false);
   };
 
-  const openEditDialog = (productId: string) => {
+  const openEditDialog = async (productId: string) => {
     setEditingProductId(productId);
-    const product = products.find((p) => p.id === productId);
-    if (product) {
+    setSlugTouched(true); // در حالت ویرایش، slug موجود حفظ می‌شود
+    setImageFiles([]);
+    setExistingImages([]);
+    setIsDialogOpen(true);
+    // اطلاعات کامل محصول (شامل مشخصات) را از سرور می‌گیریم چون لیست
+    // محصولات همه‌ی فیلدها (مثل attributes) را برنمی‌گرداند.
+    setIsEditLoading(true);
+    try {
+      const product = await productService.getAdminProduct(productId);
       setFormData({
         name: product.name,
+        slug: product.slug ?? "",
         description: product.description ?? "",
         categoryId: product.categoryId ?? "",
         basePrice: product.basePrice,
@@ -143,8 +183,9 @@ export default function ProductsPage() {
           ? product.attributes.map((a) => ({ key: a.key, value: a.value }))
           : [{ key: "", value: "" }],
       );
-      setImageFiles([]);
-      setIsDialogOpen(true);
+      setExistingImages(product.images ?? []);
+    } finally {
+      setIsEditLoading(false);
     }
   };
 
@@ -152,6 +193,7 @@ export default function ProductsPage() {
     const filteredAttributes = attributes.filter((a) => a.key && a.value);
     const payload = {
       name: formData.name,
+      slug: formData.slug.trim(),
       description: formData.description || undefined,
       categoryId: formData.categoryId || undefined,
       basePrice: Number(formData.basePrice),
@@ -174,6 +216,35 @@ export default function ProductsPage() {
   const handleDelete = async (id: string) => {
     if (confirm("حذف این محصول؟")) await deleteMutation.mutateAsync(id);
   };
+
+  // حذف یکی از تصاویر فعلی محصول در حالت ویرایش
+  const handleDeleteImage = async (imageId: string) => {
+    if (!editingProductId) return;
+    if (!confirm("حذف این تصویر؟")) return;
+    const updated = await deleteImageMutation.mutateAsync({
+      productId: editingProductId,
+      imageId,
+    });
+    setExistingImages(updated.images ?? []);
+  };
+
+  // جابه‌جایی یک تصویر به چپ/راست و ذخیره‌ی ترتیب جدید (اولین تصویر، تصویر اصلی)
+  const handleMoveImage = async (index: number, direction: -1 | 1) => {
+    if (!editingProductId) return;
+    const target = index + direction;
+    if (target < 0 || target >= existingImages.length) return;
+    const reordered = [...existingImages];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    setExistingImages(reordered); // به‌روزرسانی خوش‌بینانه
+    const updated = await reorderImagesMutation.mutateAsync({
+      productId: editingProductId,
+      imageIds: reordered.map((img) => img.id),
+    });
+    setExistingImages(updated.images ?? []);
+  };
+
+  const isImageBusy =
+    deleteImageMutation.isPending || reorderImagesMutation.isPending;
 
   const addAttribute = () => {
     setAttributes([...attributes, { key: "", value: "" }]);
@@ -217,10 +288,7 @@ export default function ProductsPage() {
 
   return (
     <div className="flex flex-col" dir="rtl">
-      <Header
-        title="محصولات"
-        description="مدیریت محصولات، موجودی و مشخصات."
-      />
+      <Header title="محصولات" description="مدیریت محصولات، موجودی و مشخصات." />
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -272,21 +340,31 @@ export default function ProductsPage() {
                 </DialogDescription>
               </DialogHeader>
 
+              {isEditLoading && (
+                <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  در حال بارگذاری اطلاعات محصول...
+                </div>
+              )}
+
               <div className="space-y-6 py-4">
                 {/* Basic Info */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">
-                    اطلاعات پایه
-                  </h4>
+                  <h4 className="font-medium text-foreground">اطلاعات پایه</h4>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="name">نام محصول</Label>
                       <Input
                         id="name"
                         value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            name,
+                            slug: slugTouched ? prev.slug : slugify(name),
+                          }));
+                        }}
                         placeholder="غذای خشک سگ"
                       />
                     </div>
@@ -310,6 +388,24 @@ export default function ProductsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="slug">
+                      اسلاگ (آدرس) <span className="text-destructive">*</span>{" "}
+                      <span className="text-xs text-muted-foreground">
+                        در URL محصول استفاده می‌شود
+                      </span>
+                    </Label>
+                    <Input
+                      id="slug"
+                      dir="ltr"
+                      value={formData.slug}
+                      onChange={(e) => {
+                        setSlugTouched(true);
+                        setFormData({ ...formData, slug: e.target.value });
+                      }}
+                      placeholder="dog-dry-food"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="description">توضیحات</Label>
@@ -370,6 +466,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Label htmlFor="isActive">محصول فعال باشد</Label>
                     <Switch
                       id="isActive"
                       checked={formData.isActive}
@@ -377,7 +474,6 @@ export default function ProductsPage() {
                         setFormData({ ...formData, isActive: checked })
                       }
                     />
-                    <Label htmlFor="isActive">محصول فعال باشد</Label>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="images">
@@ -386,6 +482,71 @@ export default function ProductsPage() {
                         (اولین تصویر، تصویر اصلی است)
                       </span>
                     </Label>
+                    {existingImages.length > 0 && (
+                      <div className="flex flex-wrap gap-3">
+                        {existingImages.map((img, index) => (
+                          <div
+                            key={img.id}
+                            className="w-24 overflow-hidden rounded-lg border border-border"
+                          >
+                            <div className="relative h-24 w-24">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={img.thumbnailUrl ?? img.url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                              {img.isPrimary && (
+                                <span className="absolute bottom-0 inset-x-0 bg-primary/80 text-primary-foreground text-[10px] text-center py-0.5">
+                                  اصلی
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteImage(img.id)}
+                                disabled={isImageBusy}
+                                title="حذف تصویر"
+                                className="absolute top-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive/90 text-white disabled:opacity-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between bg-muted px-1 py-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(index, -1)}
+                                disabled={isImageBusy || index === 0}
+                                title="انتقال به قبل"
+                                className="p-1 disabled:opacity-30"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                              <span className="text-[10px] text-muted-foreground">
+                                {(index + 1).toLocaleString("fa-IR")}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveImage(index, 1)}
+                                disabled={
+                                  isImageBusy ||
+                                  index === existingImages.length - 1
+                                }
+                                title="انتقال به بعد"
+                                className="p-1 disabled:opacity-30"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {editingProduct && (
+                      <p className="text-xs text-muted-foreground">
+                        تصاویر جدید به تصاویر فعلی افزوده می‌شوند. با فلش‌ها ترتیب
+                        را تغییر دهید (اولین تصویر، تصویر اصلی است).
+                      </p>
+                    )}
                     <Input
                       id="images"
                       type="file"
@@ -397,8 +558,8 @@ export default function ProductsPage() {
                     />
                     {imageFiles.length > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        {imageFiles.length.toLocaleString("fa-IR")} تصویر
-                        انتخاب شد
+                        {imageFiles.length.toLocaleString("fa-IR")} تصویر انتخاب
+                        شد
                       </p>
                     )}
                   </div>
@@ -469,7 +630,15 @@ export default function ProductsPage() {
                 >
                   انصراف
                 </Button>
-                <Button onClick={handleSubmit} disabled={isSaving}>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    isSaving ||
+                    isEditLoading ||
+                    !formData.name.trim() ||
+                    !formData.slug.trim()
+                  }
+                >
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 ml-2 animate-spin" />
@@ -528,8 +697,17 @@ export default function ProductsPage() {
                     <TableRow key={product.id} className="border-border">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="h-5 w-5 text-muted-foreground" />
+                          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                            {primaryImageUrl(product.images) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={primaryImageUrl(product.images)}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-muted-foreground" />
+                            )}
                           </div>
                           <div>
                             <p className="font-medium text-foreground">

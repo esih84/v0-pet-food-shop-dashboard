@@ -12,6 +12,15 @@ export function useProducts(page = 1, limit = 50) {
   });
 }
 
+// محصولات پنل ادمین — شامل محصولات غیرفعال
+export function useAdminProducts(page = 1, limit = 50) {
+  return useQuery({
+    queryKey: [...queryKeys.products, "admin", page, limit],
+    queryFn: () => productService.getAdminProducts(page, limit),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useProduct(id: string) {
   return useQuery({
     queryKey: queryKeys.product(id),

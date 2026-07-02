@@ -32,3 +32,37 @@ export function useDeleteProduct() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.products }),
   });
 }
+
+export function useDeleteProductImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productId,
+      imageId,
+    }: {
+      productId: string;
+      imageId: string;
+    }) => productService.deleteProductImage(productId, imageId),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: queryKeys.product(variables.productId) });
+    },
+  });
+}
+
+export function useReorderProductImages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productId,
+      imageIds,
+    }: {
+      productId: string;
+      imageIds: string[];
+    }) => productService.reorderProductImages(productId, imageIds),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: queryKeys.product(variables.productId) });
+    },
+  });
+}

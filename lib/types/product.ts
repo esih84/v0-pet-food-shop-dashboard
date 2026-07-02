@@ -55,6 +55,7 @@ export type Product = {
 
 export interface CreateProductInput {
   name: string;
+  slug: string;
   description?: string;
   basePrice: number;
   stock: number;
