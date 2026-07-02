@@ -14,6 +14,15 @@ const axiosInstance: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// برای آپلود فایل (FormData) نباید Content-Type دستی ست شود؛ در غیر این صورت
+// مرورگر boundary را اضافه نمی‌کند و سرور (multer) نمی‌تواند فایل‌ها را پارس کند.
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
+  return config;
+});
+
 let isRefreshing = false;
 let queue: Array<() => void> = [];
 
