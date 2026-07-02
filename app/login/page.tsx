@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/features/auth/mutations";
+import { normalizeDigits } from "@/lib/digits";
 import { PawPrint, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -78,7 +79,7 @@ export default function LoginPage() {
                 dir="ltr"
                 placeholder="09123456789"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.trim())}
+                onChange={(e) => setPhone(normalizeDigits(e.target.value))}
                 className="w-full text-center tracking-widest rounded-2xl border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
@@ -100,7 +101,7 @@ export default function LoginPage() {
                 placeholder="-----"
                 value={code}
                 onChange={(e) =>
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 5))
+                  setCode(normalizeDigits(e.target.value).slice(0, 5))
                 }
                 className="w-full text-center text-lg tracking-[0.5em] rounded-2xl border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />

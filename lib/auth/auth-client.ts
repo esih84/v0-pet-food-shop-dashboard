@@ -1,18 +1,13 @@
-import axios from "axios";
+import axiosInstance from "./axios-instance";
 
 /**
  * Auth Client — ورود ادمین با OTP موبایل (مطابق بک‌اند).
  * احراز هویت کوکی‌محور (httpOnly) است؛ بنابراین withCredentials روشن است
  * و توکنی در سمت کلاینت ذخیره نمی‌شود.
+ *
+ * از همان axiosInstance مشترک استفاده می‌کنیم تا درخواست‌هایی مثل me()
+ * روی خطای 401 به‌طور خودکار refresh شوند و ادمین بی‌دلیل بیرون نیفتد.
  */
-
-const authAxios = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api/v1",
-  timeout: 30000,
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-});
 
 export interface AdminUser {
   id: string;
@@ -30,24 +25,24 @@ export interface VerifyOtpResponse {
 export const authClient = {
   /** ارسال کد یک‌بارمصرف به شماره‌ی موبایل */
   sendOtp: async (phone: string): Promise<void> => {
-    await authAxios.post("/auth/send-otp", { phone });
+    await axiosInstance.post("/auth/send-otp", { phone });
   },
 
   /** تأیید کد و ست‌شدن کوکی‌های احراز هویت توسط بک‌اند */
   verifyOtp: async (phone: string, code: string): Promise<VerifyOtpResponse> => {
-    const res = await authAxios.post("/auth/verify-otp", { phone, code });
+    const res = await axiosInstance.post("/auth/verify-otp", { phone, code });
     return res.data.data as VerifyOtpResponse;
   },
 
   /** تمدید کوکی‌ها با کوکی refresh */
   refresh: async (): Promise<void> => {
-    await authAxios.post("/auth/refresh");
+    await axiosInstance.post("/auth/refresh");
   },
 
   /** خروج و پاک‌کردن کوکی‌ها */
   logout: async (): Promise<void> => {
     try {
-      await authAxios.post("/auth/logout");
+      await axiosInstance.post("/auth/logout");
     } catch {
       // خطای logout را نادیده می‌گیریم
     }
@@ -55,7 +50,7 @@ export const authClient = {
 
   /** کاربر فعلی */
   me: async (): Promise<AdminUser> => {
-    const res = await authAxios.get("/users/me");
+    const res = await axiosInstance.get("/users/me");
     return res.data.data as AdminUser;
   },
 };
