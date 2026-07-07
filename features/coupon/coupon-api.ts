@@ -50,6 +50,8 @@ export interface CreateCouponInput {
   categoryIds?: string[];
 }
 
+export type UpdateCouponInput = Partial<CreateCouponInput>;
+
 /** یک ردیف تاریخچه‌ی استفاده از کوپن (خرید ثبت‌شده با کد تخفیف). */
 export interface CouponUsage {
   id: string;
@@ -90,6 +92,14 @@ export const couponService = {
   async createCoupon(input: CreateCouponInput) {
     const res = await axiosInstance.post<ApiResponse<Coupon>>(
       "/coupons",
+      input,
+    );
+    return res.data.data;
+  },
+
+  async updateCoupon(id: string, input: UpdateCouponInput) {
+    const res = await axiosInstance.put<ApiResponse<Coupon>>(
+      `/coupons/${id}`,
       input,
     );
     return res.data.data;

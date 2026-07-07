@@ -29,10 +29,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2, History } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, History } from "lucide-react";
 import { useCoupons, useCouponUsages } from "@/features/coupon/queries";
-import { useCreateCoupon, useDeleteCoupon } from "@/features/coupon/mutations";
-import type { CouponType, CouponScope } from "@/features/coupon/coupon-api";
+import {
+  useCreateCoupon,
+  useUpdateCoupon,
+  useDeleteCoupon,
+} from "@/features/coupon/mutations";
+import type {
+  Coupon,
+  CouponType,
+  CouponScope,
+} from "@/features/coupon/coupon-api";
 import { useCategories } from "@/features/category/queries";
 import { useAdminProducts } from "@/features/product/queries";
 
@@ -70,9 +78,11 @@ export default function CouponsPage() {
   const { data: response, isLoading } = useCoupons();
   const coupons = response?.data ?? [];
   const createCoupon = useCreateCoupon();
+  const updateCoupon = useUpdateCoupon();
   const deleteCoupon = useDeleteCoupon();
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const set = <K extends keyof typeof emptyForm>(
     key: K,
@@ -108,9 +118,35 @@ export default function CouponsPage() {
     (form.scope === "category" && form.categoryIds.length > 0) ||
     (form.scope === "product" && form.productIds.length > 0);
 
-  const handleCreate = async () => {
+  const resetDialog = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  // پیش‌پُر کردن فرم از یک کوپن موجود برای ویرایش
+  const openEdit = (c: Coupon) => {
+    setEditingId(c.id);
+    setForm({
+      code: c.code,
+      description: c.description ?? "",
+      type: c.type,
+      scope: c.scope,
+      value: c.type === "free_shipping" ? "" : String(c.value ?? ""),
+      minPurchase: c.minPurchase != null ? String(c.minPurchase) : "",
+      maxDiscount: c.maxDiscount != null ? String(c.maxDiscount) : "",
+      usageLimit: c.usageLimit != null ? String(c.usageLimit) : "",
+      perUserLimit: String(c.perUserLimit ?? 1),
+      startDate: c.startDate ? c.startDate.slice(0, 10) : "",
+      endDate: c.endDate ? c.endDate.slice(0, 10) : "",
+      categoryIds: c.categories?.map((x) => x.id) ?? [],
+      productIds: c.products?.map((x) => x.id) ?? [],
+    });
+    setOpen(true);
+  };
+
+  const handleSubmit = async () => {
     if (!form.code || (needsValue && !form.value) || !scopeReady) return;
-    await createCoupon.mutateAsync({
+    const data = {
       code: form.code.toUpperCase().trim(),
       description: form.description || undefined,
       type: form.type,
@@ -125,14 +161,19 @@ export default function CouponsPage() {
       perUserLimit: form.perUserLimit ? Number(form.perUserLimit) : 1,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
-      categoryIds:
-        form.scope === "category" ? form.categoryIds : undefined,
+      categoryIds: form.scope === "category" ? form.categoryIds : undefined,
       productIds: form.scope === "product" ? form.productIds : undefined,
-      isActive: true,
-    });
-    setForm(emptyForm);
+    };
+    if (editingId) {
+      await updateCoupon.mutateAsync({ id: editingId, data });
+    } else {
+      await createCoupon.mutateAsync({ ...data, isActive: true });
+    }
+    resetDialog();
     setOpen(false);
   };
+
+  const isSaving = createCoupon.isPending || updateCoupon.isPending;
 
   return (
     <div className="flex flex-col" dir="rtl">
@@ -203,15 +244,23 @@ export default function CouponsPage() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog
+            open={open}
+            onOpenChange={(v) => {
+              setOpen(v);
+              if (!v) resetDialog();
+            }}
+          >
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={resetDialog}>
                 <Plus className="h-4 w-4" /> کد تخفیف جدید
               </Button>
             </DialogTrigger>
             <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>افزودن کد تخفیف</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "ویرایش کد تخفیف" : "افزودن کد تخفیف"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
@@ -392,18 +441,18 @@ export default function CouponsPage() {
               </div>
               <DialogFooter>
                 <Button
-                  onClick={handleCreate}
+                  onClick={handleSubmit}
                   disabled={
-                    createCoupon.isPending ||
+                    isSaving ||
                     !form.code ||
                     (needsValue && !form.value) ||
                     !scopeReady
                   }
                 >
-                  {createCoupon.isPending && (
+                  {isSaving && (
                     <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                   )}
-                  ذخیره
+                  {editingId ? "ذخیره‌ی تغییرات" : "ذخیره"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -482,17 +531,28 @@ export default function CouponsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-left">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            if (confirm(`حذف کد «${c.code}»؟`))
-                              deleteCoupon.mutate(c.id);
-                          }}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(c)}
+                            aria-label="ویرایش"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm(`حذف کد «${c.code}»؟`))
+                                deleteCoupon.mutate(c.id);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                            aria-label="حذف"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
