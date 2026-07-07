@@ -11,3 +11,11 @@ export function useCoupons(page = 1, limit = 50) {
     staleTime: 2 * 60 * 1000,
   });
 }
+
+export function useCouponUsages(page = 1, limit = 50, couponId?: string) {
+  return useQuery({
+    queryKey: [...queryKeys.couponUsages, page, limit, couponId ?? "all"],
+    queryFn: () => couponService.getCouponUsages(page, limit, couponId),
+    staleTime: 60 * 1000,
+  });
+}

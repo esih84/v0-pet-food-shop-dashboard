@@ -20,6 +20,7 @@ export const queryKeys = {
   reviews: ["reviews"] as const,
 
   coupons: ["coupons"] as const,
+  couponUsages: ["coupon-usages"] as const,
 
   customers: ["customers"] as const,
 
