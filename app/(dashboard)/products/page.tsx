@@ -64,10 +64,17 @@ import {
   useDeleteProduct,
   useDeleteProductImage,
   useReorderProductImages,
+  useAddProductDiscount,
+  useRemoveProductDiscount,
 } from "@/features/product/mutations";
 import { useCategories } from "@/features/category/queries";
 import { productService } from "@/features/product/product-api";
-import type { ProductAttribute, ProductImage } from "@/lib/types/product";
+import type {
+  ProductAttribute,
+  ProductImage,
+  Discount,
+  DiscountType,
+} from "@/lib/types/product";
 
 /** آدرس تصویر اصلی (یا اولین تصویر) محصول را برمی‌گرداند. */
 const primaryImageUrl = (images?: ProductImage[]): string | undefined => {
@@ -98,6 +105,8 @@ export default function ProductsPage() {
   const deleteMutation = useDeleteProduct();
   const deleteImageMutation = useDeleteProductImage();
   const reorderImagesMutation = useReorderProductImages();
+  const addDiscountMutation = useAddProductDiscount();
+  const removeDiscountMutation = useRemoveProductDiscount();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -124,6 +133,14 @@ export default function ProductsPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   // تصاویر فعلی محصول در حالت ویرایش (فقط برای نمایش)
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
+  // تخفیف‌های فعلی محصول در حالت ویرایش
+  const [existingDiscounts, setExistingDiscounts] = useState<Discount[]>([]);
+  const [discountForm, setDiscountForm] = useState({
+    type: "percentage" as DiscountType,
+    value: "",
+    startDate: "",
+    endDate: "",
+  });
 
   const editingProduct = products.find((p) => p.id === editingProductId);
 
@@ -153,6 +170,8 @@ export default function ProductsPage() {
     setAttributes([{ key: "", value: "" }]);
     setImageFiles([]);
     setExistingImages([]);
+    setExistingDiscounts([]);
+    setDiscountForm({ type: "percentage", value: "", startDate: "", endDate: "" });
     setEditingProductId(null);
     setSlugTouched(false);
   };
@@ -184,9 +203,38 @@ export default function ProductsPage() {
           : [{ key: "", value: "" }],
       );
       setExistingImages(product.images ?? []);
+      setExistingDiscounts(product.discounts ?? []);
     } finally {
       setIsEditLoading(false);
     }
+  };
+
+  // افزودن تخفیف به محصول در حال ویرایش
+  const handleAddDiscount = async () => {
+    if (!editingProductId) return;
+    if (!discountForm.value || !discountForm.startDate || !discountForm.endDate)
+      return;
+    const updated = await addDiscountMutation.mutateAsync({
+      productId: editingProductId,
+      data: {
+        type: discountForm.type,
+        value: Number(discountForm.value),
+        startDate: new Date(discountForm.startDate).toISOString(),
+        endDate: new Date(discountForm.endDate).toISOString(),
+      },
+    });
+    setExistingDiscounts(updated.discounts ?? []);
+    setDiscountForm({ type: "percentage", value: "", startDate: "", endDate: "" });
+  };
+
+  // حذف تخفیف محصول
+  const handleRemoveDiscount = async (discountId: string) => {
+    if (!editingProductId) return;
+    const updated = await removeDiscountMutation.mutateAsync({
+      productId: editingProductId,
+      discountId,
+    });
+    setExistingDiscounts(updated.discounts ?? []);
   };
 
   const handleSubmit = async () => {
@@ -621,6 +669,154 @@ export default function ProductsPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Discounts — فقط در حالت ویرایش (محصول باید از قبل ساخته شده باشد) */}
+                {editingProductId && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-foreground">
+                      تخفیف‌های محصول
+                    </h4>
+
+                    {existingDiscounts.length > 0 ? (
+                      <div className="space-y-2">
+                        {existingDiscounts.map((d) => {
+                          const now = Date.now();
+                          const active =
+                            d.isActive &&
+                            new Date(d.startDate).getTime() <= now &&
+                            new Date(d.endDate).getTime() >= now;
+                          return (
+                            <div
+                              key={d.id}
+                              className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-secondary/50"
+                            >
+                              <div className="flex items-center gap-2 text-sm">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    active
+                                      ? "bg-green-500/15 text-green-600 border-green-500/30"
+                                      : "bg-gray-500/15 text-gray-600"
+                                  }
+                                >
+                                  {active ? "فعال" : "غیرفعال"}
+                                </Badge>
+                                <span className="font-medium text-foreground">
+                                  {d.type === "percentage"
+                                    ? `${d.value}٪ تخفیف`
+                                    : `${toman(d.value)} تخفیف`}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {new Date(d.startDate).toLocaleDateString(
+                                    "fa-IR",
+                                  )}{" "}
+                                  تا{" "}
+                                  {new Date(d.endDate).toLocaleDateString(
+                                    "fa-IR",
+                                  )}
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveDiscount(d.id)}
+                                disabled={removeDiscountMutation.isPending}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        هنوز تخفیفی برای این محصول ثبت نشده است.
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-dashed border-border">
+                      <div className="space-y-2 w-32">
+                        <Label>نوع</Label>
+                        <select
+                          value={discountForm.type}
+                          onChange={(e) =>
+                            setDiscountForm((f) => ({
+                              ...f,
+                              type: e.target.value as DiscountType,
+                            }))
+                          }
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="percentage">درصدی</option>
+                          <option value="fixed">مبلغ ثابت</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2 w-32">
+                        <Label>
+                          {discountForm.type === "percentage"
+                            ? "درصد"
+                            : "مبلغ (تومان)"}
+                        </Label>
+                        <Input
+                          type="number"
+                          value={discountForm.value}
+                          onChange={(e) =>
+                            setDiscountForm((f) => ({
+                              ...f,
+                              value: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>از تاریخ</Label>
+                        <Input
+                          type="date"
+                          value={discountForm.startDate}
+                          onChange={(e) =>
+                            setDiscountForm((f) => ({
+                              ...f,
+                              startDate: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>تا تاریخ</Label>
+                        <Input
+                          type="date"
+                          value={discountForm.endDate}
+                          onChange={(e) =>
+                            setDiscountForm((f) => ({
+                              ...f,
+                              endDate: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAddDiscount}
+                        disabled={
+                          addDiscountMutation.isPending ||
+                          !discountForm.value ||
+                          !discountForm.startDate ||
+                          !discountForm.endDate
+                        }
+                      >
+                        {addDiscountMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 ml-1" />
+                        )}
+                        افزودن تخفیف
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <DialogFooter>

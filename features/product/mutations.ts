@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { productService } from "./product-api";
+import { productService, type CreateDiscountInput } from "./product-api";
 import { queryKeys } from "@/features/query-keys";
 import type { UpdateProductInput } from "@/lib/types/product";
 
@@ -60,6 +60,40 @@ export function useReorderProductImages() {
       productId: string;
       imageIds: string[];
     }) => productService.reorderProductImages(productId, imageIds),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: queryKeys.product(variables.productId) });
+    },
+  });
+}
+
+export function useAddProductDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productId,
+      data,
+    }: {
+      productId: string;
+      data: CreateDiscountInput;
+    }) => productService.addProductDiscount(productId, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: queryKeys.products });
+      qc.invalidateQueries({ queryKey: queryKeys.product(variables.productId) });
+    },
+  });
+}
+
+export function useRemoveProductDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productId,
+      discountId,
+    }: {
+      productId: string;
+      discountId: string;
+    }) => productService.removeProductDiscount(productId, discountId),
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.products });
       qc.invalidateQueries({ queryKey: queryKeys.product(variables.productId) });

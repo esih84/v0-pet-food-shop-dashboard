@@ -4,7 +4,16 @@ import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 import type {
   CreateProductInput,
   UpdateProductInput,
+  DiscountType,
 } from "@/lib/types/product";
+
+export interface CreateDiscountInput {
+  type: DiscountType;
+  value: number;
+  startDate: string;
+  endDate: string;
+  isActive?: boolean;
+}
 
 /**
  * اگر تصویری ضمیمه شده باشد بدنه را به FormData (multipart) تبدیل می‌کند تا
@@ -97,6 +106,23 @@ export const productService = {
     const res = await axiosInstance.patch<ApiResponse<Product>>(
       `/products/${productId}/images/reorder`,
       { imageIds },
+    );
+    return res.data.data;
+  },
+
+  // افزودن تخفیف به محصول
+  async addProductDiscount(productId: string, input: CreateDiscountInput) {
+    const res = await axiosInstance.post<ApiResponse<Product>>(
+      `/products/${productId}/discounts`,
+      input,
+    );
+    return res.data.data;
+  },
+
+  // حذف تخفیف محصول
+  async removeProductDiscount(productId: string, discountId: string) {
+    const res = await axiosInstance.delete<ApiResponse<Product>>(
+      `/products/${productId}/discounts/${discountId}`,
     );
     return res.data.data;
   },
