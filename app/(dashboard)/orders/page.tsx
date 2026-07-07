@@ -86,6 +86,7 @@ export default function OrdersPage() {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       order.id.toLowerCase().includes(q) ||
+      (order.orderNumber ?? "").toLowerCase().includes(q) ||
       customerName(order).toLowerCase().includes(q) ||
       (order.user?.phone ?? "").includes(q);
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
@@ -146,8 +147,8 @@ export default function OrdersPage() {
                 <TableBody>
                   {filtered.map((order) => (
                     <TableRow key={order.id} className="border-border">
-                      <TableCell className="font-medium text-foreground">
-                        #{order.id.slice(0, 8)}
+                      <TableCell className="font-medium text-foreground" dir="ltr">
+                        {order.orderNumber ?? `#${order.id.slice(0, 8)}`}
                       </TableCell>
                       <TableCell className="text-foreground">{customerName(order)}</TableCell>
                       <TableCell className="text-foreground font-semibold">
@@ -186,7 +187,10 @@ export default function OrdersPage() {
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>جزئیات سفارش</DialogTitle>
-            <DialogDescription>#{selectedOrder?.id.slice(0, 8)}</DialogDescription>
+            <DialogDescription dir="ltr">
+              {selectedOrder?.orderNumber ??
+                (selectedOrder ? `#${selectedOrder.id.slice(0, 8)}` : "")}
+            </DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (

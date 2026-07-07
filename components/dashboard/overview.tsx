@@ -108,7 +108,9 @@ export function DashboardOverview() {
                   className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3"
                 >
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">#{order.id.slice(0, 8)}</p>
+                    <p className="text-sm font-medium text-foreground" dir="ltr">
+                      {order.orderNumber ?? `#${order.id.slice(0, 8)}`}
+                    </p>
                     <p className="text-xs text-muted-foreground">{customerName(order)}</p>
                   </div>
                   <div className="text-left">

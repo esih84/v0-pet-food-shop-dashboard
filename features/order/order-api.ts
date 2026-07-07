@@ -38,6 +38,7 @@ export interface ShippingAddress {
 
 export interface Order {
   id: string;
+  orderNumber?: string | null;
   userId: string;
   user?: OrderUser;
   items: OrderItem[];
