@@ -25,15 +25,25 @@ export const queryKeys = {
   couponUsages: ["coupon-usages"] as const,
 
   customers: ["customers"] as const,
+  customer: (id: string) => ["customers", id] as const,
+
+  pets: ["pets"] as const,
 
   orders: ["orders"] as const,
   order: (id: string) => ["orders", id] as const,
+  userOrders: (userId: string) => ["orders", "user", userId] as const,
 
   currentAdmin: ["current-admin"] as const,
 
   smsTemplates: ["sms-templates"] as const,
   smsTemplate: (id: string) => ["sms-template", id] as const,
   smsStats: ["sms-stats"] as const,
+  smsMessages: ["sms-messages"] as const,
+  smsCampaigns: ["sms-campaigns"] as const,
+  smsCampaign: (id: string) => ["sms-campaign", id] as const,
+
+  crmCustomers: ["crm-customers"] as const,
+  crmSegments: ["crm-segments"] as const,
 } as const;
 
 // نام‌های مستعار پرکاربرد

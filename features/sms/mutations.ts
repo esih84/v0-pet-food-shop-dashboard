@@ -1,10 +1,14 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { smsService, type UpdateSMSTemplateInput } from "./sms-api";
+import {
+  smsService,
+  type UpdateSmsTemplateInput,
+  type CustomerFilter,
+} from "./sms-api";
 import { queryKeys } from "@/features/query-keys";
 
-export function useCreateSMSTemplate() {
+export function useCreateSmsTemplate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: smsService.createTemplate,
@@ -12,19 +16,16 @@ export function useCreateSMSTemplate() {
   });
 }
 
-export function useUpdateSMSTemplate() {
+export function useUpdateSmsTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateSMSTemplateInput }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateSmsTemplateInput }) =>
       smsService.updateTemplate(id, data),
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.smsTemplates });
-      qc.invalidateQueries({ queryKey: queryKeys.smsTemplate(variables.id) });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.smsTemplates }),
   });
 }
 
-export function useDeleteSMSTemplate() {
+export function useDeleteSmsTemplate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: smsService.deleteTemplate,
@@ -32,14 +33,34 @@ export function useDeleteSMSTemplate() {
   });
 }
 
-export function useSendTestSMS() {
+export function useSendTestSms() {
   return useMutation({
-    mutationFn: ({
-      templateId,
-      phoneNumber,
-    }: {
-      templateId: string;
-      phoneNumber: string;
-    }) => smsService.sendTest(templateId, phoneNumber),
+    mutationFn: ({ templateId, phone }: { templateId: string; phone: string }) =>
+      smsService.sendTest(templateId, phone),
+  });
+}
+
+export function useCreateCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: smsService.createCampaign,
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.smsCampaigns }),
+  });
+}
+
+export function usePreviewCampaign() {
+  return useMutation({
+    mutationFn: (filters: CustomerFilter) => smsService.previewCampaign(filters),
+  });
+}
+
+export function useSendCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => smsService.sendCampaign(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.smsCampaigns });
+      qc.invalidateQueries({ queryKey: queryKeys.smsStats });
+    },
   });
 }
