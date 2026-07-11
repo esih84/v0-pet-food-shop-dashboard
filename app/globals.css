@@ -129,3 +129,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* پنهان‌کردن نوار اسکرول (برای منوی داشبورد) — بدون از دست‌رفتن قابلیت اسکرول */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

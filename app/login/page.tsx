@@ -77,9 +77,16 @@ export default function LoginPage() {
                 type="tel"
                 inputMode="numeric"
                 dir="ltr"
+                maxLength={11}
                 placeholder="09123456789"
                 value={phone}
-                onChange={(e) => setPhone(normalizeDigits(e.target.value))}
+                onChange={(e) =>
+                  setPhone(
+                    normalizeDigits(e.target.value)
+                      .replace(/\D/g, "")
+                      .slice(0, 11),
+                  )
+                }
                 className="w-full text-center tracking-widest rounded-2xl border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
               <button
