@@ -13,6 +13,9 @@ export type {
 // Categories
 export type { Category } from "./category";
 
+// Brands
+export type { Brand } from "./brand";
+
 // Banners
 export type { Banner, BannerPosition } from "./banner";
 

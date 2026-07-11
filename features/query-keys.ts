@@ -14,6 +14,8 @@ export const queryKeys = {
 
   categories: ["categories"] as const,
 
+  brands: ["brands"] as const,
+
   collections: ["collections"] as const,
   collection: (id: string) => ["collections", id] as const,
 
