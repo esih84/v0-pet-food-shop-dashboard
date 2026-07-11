@@ -1,4 +1,5 @@
 import type { Category } from "./category";
+import type { Brand } from "./brand";
 
 export type DiscountType = "percentage" | "fixed";
 
@@ -44,6 +45,11 @@ export type Product = {
 
   categoryId?: string;
   category?: Category | null;
+  /** دسته‌های محصول (چند‌مقداری) */
+  categories?: Category[];
+
+  brandId?: string;
+  brand?: Brand | null;
 
   images?: ProductImage[];
   attributes?: ProductAttribute[];
@@ -61,6 +67,9 @@ export interface CreateProductInput {
   stock: number;
   sku?: string;
   categoryId?: string;
+  /** دسته‌های محصول (چند‌مقداری) */
+  categoryIds?: string[];
+  brandId?: string;
   isActive?: boolean;
   attributes?: ProductAttribute[];
   /** تصاویر محصول — هنگام ساخت/ویرایش آپلود می‌شوند (اولین تصویر، تصویر اصلی) */

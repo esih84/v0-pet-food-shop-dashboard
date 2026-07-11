@@ -15,6 +15,13 @@ export interface CreateDiscountInput {
   isActive?: boolean;
 }
 
+export interface ImportProductsResult {
+  total: number;
+  created: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
+
 /**
  * اگر تصویری ضمیمه شده باشد بدنه را به FormData (multipart) تبدیل می‌کند تا
  * همراه تصاویر ارسال شود؛ در این حالت آرایه‌ها (attributes) به‌صورت JSON رشته‌ای
@@ -32,7 +39,7 @@ function buildProductBody(
   Object.entries(input).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
     if (key === "images") return;
-    if (key === "attributes") {
+    if (key === "attributes" || key === "categoryIds") {
       fd.append(key, JSON.stringify(value));
     } else {
       fd.append(key, String(value));
@@ -91,6 +98,17 @@ export const productService = {
 
   async deleteProduct(id: string) {
     await axiosInstance.delete(`/products/${id}`);
+  },
+
+  // ورود گروهی محصولات از فایل اکسل
+  async importProducts(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await axiosInstance.post<ApiResponse<ImportProductsResult>>(
+      "/products/import",
+      fd,
+    );
+    return res.data.data;
   },
 
   // حذف یک تصویر محصول

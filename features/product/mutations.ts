@@ -33,6 +33,14 @@ export function useDeleteProduct() {
   });
 }
 
+export function useImportProducts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => productService.importProducts(file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.products }),
+  });
+}
+
 export function useDeleteProductImage() {
   const qc = useQueryClient();
   return useMutation({

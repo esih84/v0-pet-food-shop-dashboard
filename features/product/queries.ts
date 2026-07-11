@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { productService } from "./product-api";
 import { queryKeys } from "@/features/query-keys";
 
@@ -18,6 +18,7 @@ export function useAdminProducts(page = 1, limit = 50) {
     queryKey: [...queryKeys.products, "admin", page, limit],
     queryFn: () => productService.getAdminProducts(page, limit),
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

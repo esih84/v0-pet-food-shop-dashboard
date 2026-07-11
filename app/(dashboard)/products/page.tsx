@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { Header } from "@/components/dashboard/header";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -54,6 +56,7 @@ import {
   Package,
   X,
   Loader2,
+  Upload,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -66,9 +69,13 @@ import {
   useReorderProductImages,
   useAddProductDiscount,
   useRemoveProductDiscount,
+  useImportProducts,
 } from "@/features/product/mutations";
 import { useCategories } from "@/features/category/queries";
+import { useBrands } from "@/features/brand/queries";
 import { productService } from "@/features/product/product-api";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 import type {
   ProductAttribute,
   ProductImage,
@@ -94,9 +101,25 @@ const slugify = (value: string) =>
 
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
+/** مسطح‌کردن درخت دسته‌بندی به لیست تخت (با پیشوند نام والد) برای انتخاب چندتایی. */
+type CategoryNode = { id: string; name: string; children?: CategoryNode[] };
+const flattenCategories = (
+  nodes: CategoryNode[],
+  prefix = "",
+): { id: string; label: string }[] =>
+  nodes.flatMap((n) => {
+    const label = prefix ? `${prefix} › ${n.name}` : n.name;
+    return [
+      { id: n.id, label },
+      ...(n.children ? flattenCategories(n.children, label) : []),
+    ];
+  });
+
 export default function ProductsPage() {
-  const { data, isLoading, error } = useAdminProducts();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useAdminProducts(page, PAGE_SIZE);
   const { data: categories = [] } = useCategories();
+  const { data: brands = [] } = useBrands();
 
   const products = data?.data ?? [];
 
@@ -107,6 +130,25 @@ export default function ProductsPage() {
   const reorderImagesMutation = useReorderProductImages();
   const addDiscountMutation = useAddProductDiscount();
   const removeDiscountMutation = useRemoveProductDiscount();
+  const importMutation = useImportProducts();
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // اجازه‌ی انتخاب دوباره‌ی همان فایل
+    if (!file) return;
+    try {
+      const res = await importMutation.mutateAsync(file);
+      toast.success(
+        `ورود انجام شد: ${res.created} ساخته‌شده، ${res.skipped} تکراری` +
+          (res.errors.length ? `، ${res.errors.length} خطا` : ""),
+      );
+    } catch {
+      // خطای سراسری با توست نمایش داده می‌شود
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -122,11 +164,18 @@ export default function ProductsPage() {
     slug: "",
     description: "",
     categoryId: "",
+    brandId: "",
     basePrice: 0,
     stock: 0,
     sku: "",
     isActive: true,
   });
+  // دسته‌های انتخاب‌شده (چند‌مقداری)
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const toggleCategory = (id: string) =>
+    setCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   const [attributes, setAttributes] = useState<ProductAttribute[]>([
     { key: "", value: "" },
   ]);
@@ -162,11 +211,13 @@ export default function ProductsPage() {
       slug: "",
       description: "",
       categoryId: "",
+      brandId: "",
       basePrice: 0,
       stock: 0,
       sku: "",
       isActive: true,
     });
+    setCategoryIds([]);
     setAttributes([{ key: "", value: "" }]);
     setImageFiles([]);
     setExistingImages([]);
@@ -192,11 +243,19 @@ export default function ProductsPage() {
         slug: product.slug ?? "",
         description: product.description ?? "",
         categoryId: product.categoryId ?? "",
+        brandId: product.brandId ?? "",
         basePrice: product.basePrice,
         stock: product.stock,
         sku: product.sku ?? "",
         isActive: product.isActive,
       });
+      setCategoryIds(
+        product.categories && product.categories.length > 0
+          ? product.categories.map((c) => c.id)
+          : product.categoryId
+            ? [product.categoryId]
+            : [],
+      );
       setAttributes(
         product.attributes && product.attributes.length > 0
           ? product.attributes.map((a) => ({ key: a.key, value: a.value }))
@@ -243,7 +302,9 @@ export default function ProductsPage() {
       name: formData.name,
       slug: formData.slug.trim(),
       description: formData.description || undefined,
-      categoryId: formData.categoryId || undefined,
+      categoryId: categoryIds[0] || formData.categoryId || undefined,
+      categoryIds,
+      brandId: formData.brandId || undefined,
       basePrice: Number(formData.basePrice),
       stock: Number(formData.stock),
       sku: formData.sku || undefined,
@@ -344,7 +405,7 @@ export default function ProductsPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="جستجوی محصولات..."
+                placeholder="جستجو در این صفحه..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pr-9 bg-input"
@@ -361,6 +422,27 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleImportExcel}
+            />
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importMutation.isPending}
+            >
+              {importMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              ورود از اکسل
+            </Button>
           <Dialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -417,24 +499,54 @@ export default function ProductsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="category">دسته‌بندی</Label>
-                      <Select
-                        value={formData.categoryId}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, categoryId: value })
+                      <Label>دسته‌بندی‌ها (می‌توانید چند مورد انتخاب کنید)</Label>
+                      <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+                        {flattenCategories(categories as CategoryNode[]).map(
+                          (c) => (
+                            <label
+                              key={c.id}
+                              className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-muted cursor-pointer text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={categoryIds.includes(c.id)}
+                                onChange={() => toggleCategory(c.id)}
+                              />
+                              <span>{c.label}</span>
+                            </label>
+                          ),
+                        )}
+                        {categories.length === 0 && (
+                          <p className="text-xs text-muted-foreground px-1">
+                            دسته‌بندی‌ای وجود ندارد
+                          </p>
+                        )}
+                      </div>
+                      {categoryIds.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {categoryIds.length.toLocaleString("fa-IR")} دسته انتخاب شد
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>برند</Label>
+                      <select
+                        value={formData.brandId}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            brandId: e.target.value,
+                          }))
                         }
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="انتخاب دسته‌بندی" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <option value="">— بدون برند —</option>
+                        {brands.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -772,27 +884,19 @@ export default function ProductsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>از تاریخ</Label>
-                        <Input
-                          type="date"
+                        <JalaliDatePicker
                           value={discountForm.startDate}
-                          onChange={(e) =>
-                            setDiscountForm((f) => ({
-                              ...f,
-                              startDate: e.target.value,
-                            }))
+                          onChange={(v) =>
+                            setDiscountForm((f) => ({ ...f, startDate: v }))
                           }
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>تا تاریخ</Label>
-                        <Input
-                          type="date"
+                        <JalaliDatePicker
                           value={discountForm.endDate}
-                          onChange={(e) =>
-                            setDiscountForm((f) => ({
-                              ...f,
-                              endDate: e.target.value,
-                            }))
+                          onChange={(v) =>
+                            setDiscountForm((f) => ({ ...f, endDate: v }))
                           }
                         />
                       </div>
@@ -849,6 +953,7 @@ export default function ProductsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Products Table */}
@@ -856,7 +961,7 @@ export default function ProductsPage() {
           <CardHeader>
             <CardTitle className="text-foreground">همه محصولات</CardTitle>
             <CardDescription>
-              {filteredProducts.length.toLocaleString("fa-IR")} محصول یافت شد
+              {(data?.total ?? 0).toLocaleString("fa-IR")} محصول
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -963,6 +1068,12 @@ export default function ProductsPage() {
                 </TableBody>
               </Table>
             )}
+            <DataPagination
+              page={page}
+              totalPages={data?.totalPages ?? 1}
+              total={data?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>

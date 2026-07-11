@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -43,6 +44,8 @@ import type {
 } from "@/features/coupon/coupon-api";
 import { useCategories } from "@/features/category/queries";
 import { useAdminProducts } from "@/features/product/queries";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
@@ -75,7 +78,8 @@ const emptyForm = {
 };
 
 export default function CouponsPage() {
-  const { data: response, isLoading } = useCoupons();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useCoupons(page, PAGE_SIZE);
   const coupons = response?.data ?? [];
   const createCoupon = useCreateCoupon();
   const updateCoupon = useUpdateCoupon();
@@ -102,7 +106,7 @@ export default function CouponsPage() {
         : [...f[key], id],
     }));
 
-  // تاریخچه‌ی استفاده
+  // تاریخچه‌ی استفاده (کلی)
   const [historyOpen, setHistoryOpen] = useState(false);
   const { data: usagesRes, isLoading: usagesLoading } = useCouponUsages(
     1,
@@ -110,6 +114,9 @@ export default function CouponsPage() {
     undefined,
   );
   const usages = usagesRes?.data ?? [];
+
+  // تاریخچه‌ی استفاده‌ی یک کوپن مشخص
+  const [historyCoupon, setHistoryCoupon] = useState<Coupon | null>(null);
 
   const needsValue = form.type !== "free_shipping";
 
@@ -220,7 +227,10 @@ export default function CouponsPage() {
                     <TableBody>
                       {usages.map((u) => (
                         <TableRow key={u.id} className="border-border">
-                          <TableCell className="font-medium text-foreground" dir="ltr">
+                          <TableCell
+                            className="font-medium text-foreground"
+                            dir="ltr"
+                          >
                             {u.coupon?.code ?? "—"}
                           </TableCell>
                           <TableCell className="text-foreground">
@@ -423,18 +433,16 @@ export default function CouponsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>تاریخ شروع (اختیاری)</Label>
-                    <Input
-                      type="date"
+                    <JalaliDatePicker
                       value={form.startDate}
-                      onChange={(e) => set("startDate", e.target.value)}
+                      onChange={(v) => set("startDate", v)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>تاریخ پایان (اختیاری)</Label>
-                    <Input
-                      type="date"
+                    <JalaliDatePicker
                       value={form.endDate}
-                      onChange={(e) => set("endDate", e.target.value)}
+                      onChange={(v) => set("endDate", v)}
                     />
                   </div>
                 </div>
@@ -463,7 +471,7 @@ export default function CouponsPage() {
           <CardHeader>
             <CardTitle className="text-foreground">همه‌ی کدها</CardTitle>
             <CardDescription>
-              {coupons.length.toLocaleString("fa-IR")} کد تخفیف
+              {(response?.total ?? 0).toLocaleString("fa-IR")} کد تخفیف
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -475,20 +483,36 @@ export default function CouponsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground text-right">کد</TableHead>
-                    <TableHead className="text-muted-foreground text-right">نوع</TableHead>
-                    <TableHead className="text-muted-foreground text-right">دامنه</TableHead>
-                    <TableHead className="text-muted-foreground text-right">مقدار</TableHead>
-                    <TableHead className="text-muted-foreground text-right">حداقل خرید</TableHead>
-                    <TableHead className="text-muted-foreground text-right">استفاده</TableHead>
-                    <TableHead className="text-muted-foreground text-right">وضعیت</TableHead>
-                    <TableHead className="text-muted-foreground text-left">عملیات</TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      کد
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      نوع
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      دامنه
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      مقدار
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      حداقل خرید
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      استفاده
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      وضعیت
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-left">
+                      عملیات
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {coupons.map((c) => (
                     <TableRow key={c.id} className="border-border">
-                      <TableCell className="font-medium text-foreground" dir="ltr">
+                      <TableCell className="font-medium text-foreground">
                         {c.code}
                       </TableCell>
                       <TableCell className="text-foreground">
@@ -499,15 +523,15 @@ export default function CouponsPage() {
                         {c.scope === "category" && c.categories?.length
                           ? ` (${c.categories.length.toLocaleString("fa-IR")})`
                           : c.scope === "product" && c.products?.length
-                          ? ` (${c.products.length.toLocaleString("fa-IR")})`
-                          : ""}
+                            ? ` (${c.products.length.toLocaleString("fa-IR")})`
+                            : ""}
                       </TableCell>
                       <TableCell className="text-foreground">
                         {c.type === "percentage"
                           ? `${c.value}٪`
                           : c.type === "fixed"
-                          ? toman(c.value)
-                          : "—"}
+                            ? toman(c.value)
+                            : "—"}
                       </TableCell>
                       <TableCell className="text-foreground">
                         {c.minPurchase ? toman(c.minPurchase) : "—"}
@@ -535,6 +559,15 @@ export default function CouponsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setHistoryCoupon(c)}
+                            aria-label="تاریخچه‌ی استفاده"
+                            title="تاریخچه‌ی استفاده"
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => openEdit(c)}
                             aria-label="ویرایش"
                           >
@@ -559,9 +592,92 @@ export default function CouponsPage() {
                 </TableBody>
               </Table>
             )}
+            <DataPagination
+              page={page}
+              totalPages={response?.totalPages ?? 1}
+              total={response?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>
+
+      <CouponUsageDialog
+        coupon={historyCoupon}
+        onClose={() => setHistoryCoupon(null)}
+      />
     </div>
+  );
+}
+
+/** دیالوگ تاریخچه‌ی استفاده برای یک کوپن مشخص (کوئری فقط هنگام باز بودن اجرا می‌شود). */
+function CouponUsageDialog({
+  coupon,
+  onClose,
+}: {
+  coupon: Coupon | null;
+  onClose: () => void;
+}) {
+  const { data: usagesRes, isLoading } = useCouponUsages(1, 50, coupon?.id);
+  const usages = usagesRes?.data ?? [];
+
+  return (
+    <Dialog open={!!coupon} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent dir="rtl" className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            تاریخچه‌ی استفاده از کد{" "}
+            <span dir="ltr" className="font-mono">
+              {coupon?.code}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : usages.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8 text-sm">
+              این کد هنوز استفاده نشده است.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground text-right">
+                    کاربر
+                  </TableHead>
+                  <TableHead className="text-muted-foreground text-right">
+                    تخفیف اعمال‌شده
+                  </TableHead>
+                  <TableHead className="text-muted-foreground text-right">
+                    تاریخ
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usages.map((u) => (
+                  <TableRow key={u.id} className="border-border">
+                    <TableCell className="text-foreground">
+                      {u.user
+                        ? `${u.user.firstName ?? ""} ${u.user.lastName ?? ""}`.trim() ||
+                          u.user.phone
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-foreground">
+                      {toman(Number(u.discountApplied))}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(u.usedAt).toLocaleDateString("fa-IR")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
