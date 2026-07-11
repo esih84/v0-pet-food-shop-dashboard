@@ -48,15 +48,19 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
-import { useBanners } from "@/features/banner/queries";
+import { useAdminBanners } from "@/features/banner/queries";
 import {
   useCreateBanner,
   useUpdateBanner,
   useDeleteBanner,
 } from "@/features/banner/mutations";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 export default function BannersPage() {
-  const { data: banners = [], isLoading } = useBanners();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useAdminBanners(page, PAGE_SIZE);
+  const banners = response?.data ?? [];
   const createMutation = useCreateBanner();
   const updateMutation = useUpdateBanner();
   const deleteMutation = useDeleteBanner();
@@ -335,7 +339,7 @@ export default function BannersPage() {
           <CardHeader>
             <CardTitle className="text-foreground">همه بنرها</CardTitle>
             <CardDescription>
-              مجموعاً {banners.length.toLocaleString("fa-IR")} بنر
+              مجموعاً {(response?.total ?? 0).toLocaleString("fa-IR")} بنر
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -424,6 +428,12 @@ export default function BannersPage() {
                 ))}
               </div>
             )}
+            <DataPagination
+              page={page}
+              totalPages={response?.totalPages ?? 1}
+              total={response?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>

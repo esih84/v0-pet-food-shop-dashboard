@@ -1,6 +1,6 @@
 import axiosInstance from "@/lib/auth/axios-instance";
 import type { Collection } from "@/lib/types";
-import type { ApiResponse } from "@/lib/types/api";
+import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 
 export interface CreateCollectionInput {
   name: string;
@@ -17,6 +17,14 @@ export const collectionService = {
     const res = await axiosInstance.get<ApiResponse<Collection[]>>(
       "/collections",
     );
+    return res.data.data;
+  },
+
+  // پنل ادمین — همه‌ی کالکشن‌ها (شامل غیرفعال) با صفحه‌بندی
+  async getAdminCollections(page = 1, limit = 10) {
+    const res = await axiosInstance.get<
+      ApiResponse<PaginatedResult<Collection>>
+    >(`/collections/admin/all?page=${page}&limit=${limit}`);
     return res.data.data;
   },
 

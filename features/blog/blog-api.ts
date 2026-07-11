@@ -14,11 +14,12 @@ export interface CreateBlogInput {
 export interface UpdateBlogInput extends Partial<CreateBlogInput> {}
 
 export const blogService = {
-  async getBlogs() {
+  // پنل ادمین — همه‌ی مطالب (شامل پیش‌نویس‌ها) با صفحه‌بندی
+  async getBlogs(page = 1, limit = 10) {
     const res = await axiosInstance.get<ApiResponse<PaginatedResult<Blog>>>(
-      "/blogs",
+      `/blogs/admin/all?page=${page}&limit=${limit}`,
     );
-    return res.data.data.data;
+    return res.data.data;
   },
 
   async getBlog(id: string) {

@@ -33,19 +33,23 @@ import {
   FolderOpen,
   Loader2,
 } from "lucide-react";
-import { useCollections } from "@/features/collection/queries";
+import { useAdminCollections } from "@/features/collection/queries";
 import {
   useCreateCollection,
   useUpdateCollection,
   useDeleteCollection,
 } from "@/features/collection/mutations";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 function slugify(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w؀-ۿ-]/g, "");
 }
 
 export default function CollectionsPage() {
-  const { data: collections = [], isLoading } = useCollections();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useAdminCollections(page, PAGE_SIZE);
+  const collections = response?.data ?? [];
   const createMutation = useCreateCollection();
   const updateMutation = useUpdateCollection();
   const deleteMutation = useDeleteCollection();
@@ -124,7 +128,7 @@ export default function CollectionsPage() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="جستجوی کالکشن..."
+              placeholder="جستجو در این صفحه..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-9 bg-input"
@@ -296,6 +300,13 @@ export default function CollectionsPage() {
             ))}
           </div>
         )}
+
+        <DataPagination
+          page={page}
+          totalPages={response?.totalPages ?? 1}
+          total={response?.total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

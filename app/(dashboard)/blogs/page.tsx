@@ -60,13 +60,17 @@ import {
   useUpdateBlog,
   useDeleteBlog,
 } from "@/features/blog/mutations";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 function slugify(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w؀-ۿ-]/g, "");
 }
 
 export default function BlogsPage() {
-  const { data: blogs = [], isLoading } = useBlogs();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useBlogs(page, PAGE_SIZE);
+  const blogs = response?.data ?? [];
   const createMutation = useCreateBlog();
   const updateMutation = useUpdateBlog();
   const deleteMutation = useDeleteBlog();
@@ -162,7 +166,7 @@ export default function BlogsPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="جستجوی مطالب..."
+                placeholder="جستجو در این صفحه..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pr-9 bg-input"
@@ -310,7 +314,7 @@ export default function BlogsPage() {
           <CardHeader>
             <CardTitle className="text-foreground">همه مطالب</CardTitle>
             <CardDescription>
-              {filteredBlogs.length.toLocaleString("fa-IR")} مطلب یافت شد
+              {(response?.total ?? 0).toLocaleString("fa-IR")} مطلب
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -390,6 +394,12 @@ export default function BlogsPage() {
                 </TableBody>
               </Table>
             )}
+            <DataPagination
+              page={page}
+              totalPages={response?.totalPages ?? 1}
+              total={response?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>

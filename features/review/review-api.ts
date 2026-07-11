@@ -14,11 +14,11 @@ export interface Review {
 }
 
 export const reviewService = {
-  async getReviews() {
+  async getReviews(page = 1, limit = 10) {
     const res = await axiosInstance.get<ApiResponse<PaginatedResult<Review>>>(
-      "/reviews/admin/all",
+      `/reviews/admin/all?page=${page}&limit=${limit}`,
     );
-    return res.data.data.data;
+    return res.data.data;
   },
 
   async approveReview(id: string) {

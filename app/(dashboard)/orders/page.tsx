@@ -46,6 +46,8 @@ import {
 import { useOrders } from "@/features/order/queries";
 import { useUpdateOrderStatus } from "@/features/order/mutations";
 import type { OrderStatus } from "@/features/order/order-api";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 const STATUS: { value: OrderStatus; label: string; className: string }[] = [
   { value: "pending", label: "در انتظار", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
@@ -71,7 +73,8 @@ const customerName = (o: {
 };
 
 export default function OrdersPage() {
-  const { data: response, isLoading } = useOrders();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useOrders(page, PAGE_SIZE);
   const orders = response?.data ?? [];
   const updateStatus = useUpdateOrderStatus();
 
@@ -101,7 +104,7 @@ export default function OrdersPage() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="جستجوی سفارش..."
+              placeholder="جستجو در این صفحه..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-9 bg-input"
@@ -125,7 +128,9 @@ export default function OrdersPage() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">همه‌ی سفارش‌ها</CardTitle>
-            <CardDescription>{filtered.length.toLocaleString("fa-IR")} سفارش</CardDescription>
+            <CardDescription>
+              {(response?.total ?? 0).toLocaleString("fa-IR")} سفارش
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -179,12 +184,18 @@ export default function OrdersPage() {
                 </TableBody>
               </Table>
             )}
+            <DataPagination
+              page={page}
+              totalPages={response?.totalPages ?? 1}
+              total={response?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl" dir="rtl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>جزئیات سفارش</DialogTitle>
             <DialogDescription dir="ltr">

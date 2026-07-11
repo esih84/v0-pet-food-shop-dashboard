@@ -68,6 +68,13 @@ export const orderService = {
     return res.data.data;
   },
 
+  async getUserOrders(userId: string, page = 1, limit = 50) {
+    const res = await axiosInstance.get<ApiResponse<PaginatedResult<Order>>>(
+      `/orders/admin/user/${userId}?page=${page}&limit=${limit}`,
+    );
+    return res.data.data;
+  },
+
   async updateOrderStatus(id: string, status: OrderStatus) {
     const res = await axiosInstance.put<ApiResponse<Order>>(
       `/orders/${id}/status`,

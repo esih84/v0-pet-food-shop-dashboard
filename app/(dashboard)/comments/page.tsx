@@ -22,9 +22,13 @@ import {
 import { Star, Check, Trash2, Loader2 } from "lucide-react";
 import { useComments } from "@/features/review/queries";
 import { useApproveReview, useDeleteReview } from "@/features/review/mutations";
+import { DataPagination } from "@/components/dashboard/data-pagination";
+import { PAGE_SIZE } from "@/lib/pagination";
 
 export default function CommentsPage() {
-  const { data: reviews = [], isLoading } = useComments();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading } = useComments(page, PAGE_SIZE);
+  const reviews = response?.data ?? [];
   const approve = useApproveReview();
   const remove = useDeleteReview();
   const [filter, setFilter] = useState<"all" | "pending" | "approved">("all");
@@ -64,7 +68,9 @@ export default function CommentsPage() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">نظرات</CardTitle>
-            <CardDescription>{filtered.length.toLocaleString("fa-IR")} نظر</CardDescription>
+            <CardDescription>
+              {(response?.total ?? 0).toLocaleString("fa-IR")} نظر
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -140,6 +146,12 @@ export default function CommentsPage() {
                 </TableBody>
               </Table>
             )}
+            <DataPagination
+              page={page}
+              totalPages={response?.totalPages ?? 1}
+              total={response?.total}
+              onPageChange={setPage}
+            />
           </CardContent>
         </Card>
       </div>

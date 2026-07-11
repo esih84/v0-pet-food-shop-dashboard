@@ -1,6 +1,6 @@
 import axiosInstance from "@/lib/auth/axios-instance";
 import type { Banner } from "@/lib/types";
-import type { ApiResponse } from "@/lib/types/api";
+import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 
 export interface CreateBannerInput {
   title: string;
@@ -42,6 +42,14 @@ function buildBannerBody(input: UpdateBannerInput): FormData | UpdateBannerInput
 export const bannerService = {
   async getBanners() {
     const { data } = await axiosInstance.get<ApiResponse<Banner[]>>("/banners");
+    return data.data;
+  },
+
+  // پنل ادمین — همه‌ی بنرها (شامل غیرفعال) با صفحه‌بندی
+  async getAdminBanners(page = 1, limit = 10) {
+    const { data } = await axiosInstance.get<
+      ApiResponse<PaginatedResult<Banner>>
+    >(`/banners/admin/all?page=${page}&limit=${limit}`);
     return data.data;
   },
 
