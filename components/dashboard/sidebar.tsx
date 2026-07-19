@@ -86,14 +86,11 @@ export function Sidebar() {
                 <NextImage
                   src="/logo.png"
                   alt="PetMeal"
-                  width={120}
-                  height={32}
+                  width={220}
+                  height={52}
                   priority
                   className="h-6 w-auto object-contain"
                 />
-              </span>
-              <span className="text-sm font-semibold text-foreground">
-                پنل مدیریت
               </span>
             </Link>
           )}
@@ -130,7 +127,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute left-full top-20 z-10 hidden h-6 w-6 -translate-x-1/2 rounded-full border border-border bg-background shadow-sm lg:flex"
+          className="absolute left-0 top-20 z-10 hidden h-6 w-6 -translate-x-1/2 rounded-full border border-border bg-background shadow-sm lg:flex"
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "باز کردن منو" : "جمع کردن منو"}
         >

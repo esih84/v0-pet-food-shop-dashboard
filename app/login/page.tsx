@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useAuth } from "@/features/auth/mutations";
+import NextImage from "next/image";
+
 import { normalizeDigits } from "@/lib/digits";
-import { PawPrint, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const { sendOtp, sendOtpPending, verifyOtp, verifyOtpPending } = useAuth();
@@ -53,10 +55,17 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
-            <PawPrint className="w-7 h-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">ورود به پنل مدیریت</h1>
+          <NextImage
+            src="/logo.png"
+            alt="PetMeal"
+            width={220}
+            height={52}
+            priority
+            className="h-16 mb-4 w-auto object-contain"
+          />
+          <h1 className="text-xl font-bold text-foreground">
+            ورود به پنل مدیریت
+          </h1>
           <p className="text-sm text-muted-foreground mt-1 text-center">
             {step === "phone"
               ? "شماره موبایل ادمین را وارد کنید"
@@ -117,7 +126,9 @@ export default function LoginPage() {
                 disabled={verifyOtpPending}
                 className="w-full rounded-2xl bg-primary text-primary-foreground py-3 font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                {verifyOtpPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {verifyOtpPending && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
                 ورود
               </button>
               <button

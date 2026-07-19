@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowRight,
+  ArrowLeft,
   Loader2,
   Phone,
   Mail,
@@ -36,13 +36,34 @@ import type { OrderStatus } from "@/features/order/order-api";
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
 const STATUS: Record<OrderStatus, { label: string; className: string }> = {
-  pending: { label: "در انتظار", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
-  confirmed: { label: "تأییدشده", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
-  processing: { label: "در حال پردازش", className: "bg-blue-400/15 text-blue-500 border-blue-400/30" },
-  shipped: { label: "ارسال‌شده", className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30" },
-  delivered: { label: "تحویل‌شده", className: "bg-green-500/15 text-green-600 border-green-500/30" },
-  cancelled: { label: "لغوشده", className: "bg-red-500/15 text-red-600 border-red-500/30" },
-  refunded: { label: "مرجوع‌شده", className: "bg-gray-500/15 text-gray-600 border-gray-500/30" },
+  pending: {
+    label: "در انتظار",
+    className: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  },
+  confirmed: {
+    label: "تأییدشده",
+    className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
+  },
+  processing: {
+    label: "در حال پردازش",
+    className: "bg-blue-400/15 text-blue-500 border-blue-400/30",
+  },
+  shipped: {
+    label: "ارسال‌شده",
+    className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30",
+  },
+  delivered: {
+    label: "تحویل‌شده",
+    className: "bg-green-500/15 text-green-600 border-green-500/30",
+  },
+  cancelled: {
+    label: "لغوشده",
+    className: "bg-red-500/15 text-red-600 border-red-500/30",
+  },
+  refunded: {
+    label: "مرجوع‌شده",
+    className: "bg-gray-500/15 text-gray-600 border-gray-500/30",
+  },
 };
 
 export default function CustomerDetailPage() {
@@ -54,16 +75,20 @@ export default function CustomerDetailPage() {
   const orders = ordersRes?.data ?? [];
 
   const fullName =
-    `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim() || "بدون نام";
+    `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim() ||
+    "بدون نام";
   const totalSpent = orders.reduce((sum, o) => sum + Number(o.finalAmount), 0);
 
   return (
     <div className="flex flex-col" dir="rtl">
-      <Header title="جزئیات مشتری" description="اطلاعات کاربر و تاریخچه‌ی سفارش‌ها." />
+      <Header
+        title="جزئیات مشتری"
+        description="اطلاعات کاربر و تاریخچه‌ی سفارش‌ها."
+      />
       <div className="flex-1 p-6 space-y-6">
         <Link href="/customers">
           <Button variant="ghost" className="gap-2">
-            <ArrowRight className="h-4 w-4" /> بازگشت به مشتریان
+            <ArrowLeft className="h-4 w-4" /> بازگشت به مشتریان
           </Button>
         </Link>
 
@@ -86,9 +111,14 @@ export default function CustomerDetailPage() {
                       {fullName.charAt(0)}
                     </div>
                     <div>
-                      <CardTitle className="text-foreground">{fullName}</CardTitle>
+                      <CardTitle className="text-foreground">
+                        {fullName}
+                      </CardTitle>
                       <CardDescription>
-                        عضو از {new Date(customer.createdAt).toLocaleDateString("fa-IR")}
+                        عضو از{" "}
+                        {new Date(customer.createdAt).toLocaleDateString(
+                          "fa-IR",
+                        )}
                       </CardDescription>
                     </div>
                   </div>
@@ -127,10 +157,14 @@ export default function CustomerDetailPage() {
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-muted-foreground">تاریخ تولد</p>
+                      <p className="text-xs text-muted-foreground">
+                        تاریخ تولد
+                      </p>
                       <p className="font-medium text-foreground">
                         {customer.birthDate
-                          ? new Date(customer.birthDate).toLocaleDateString("fa-IR")
+                          ? new Date(customer.birthDate).toLocaleDateString(
+                              "fa-IR",
+                            )
                           : "—"}
                       </p>
                     </div>
@@ -138,7 +172,9 @@ export default function CustomerDetailPage() {
                   <div className="flex items-center gap-3">
                     <ShoppingBag className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-muted-foreground">تعداد سفارش‌ها</p>
+                      <p className="text-xs text-muted-foreground">
+                        تعداد سفارش‌ها
+                      </p>
                       <p className="font-medium text-foreground">
                         {orders.length.toLocaleString("fa-IR")}
                       </p>
@@ -147,8 +183,12 @@ export default function CustomerDetailPage() {
                   <div className="flex items-center gap-3">
                     <Wallet className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-muted-foreground">مجموع خرید</p>
-                      <p className="font-medium text-foreground">{toman(totalSpent)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        مجموع خرید
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {toman(totalSpent)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -158,7 +198,9 @@ export default function CustomerDetailPage() {
             {/* تاریخچه‌ی سفارش‌ها */}
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle className="text-foreground">تاریخچه‌ی سفارش‌ها</CardTitle>
+                <CardTitle className="text-foreground">
+                  تاریخچه‌ی سفارش‌ها
+                </CardTitle>
                 <CardDescription>
                   {orders.length.toLocaleString("fa-IR")} سفارش
                 </CardDescription>
@@ -196,7 +238,10 @@ export default function CustomerDetailPage() {
                     <TableBody>
                       {orders.map((o) => (
                         <TableRow key={o.id} className="border-border">
-                          <TableCell className="font-medium text-foreground" dir="ltr">
+                          <TableCell
+                            className="font-medium text-foreground"
+                            dir="ltr"
+                          >
                             {o.orderNumber ?? `#${o.id.slice(0, 8)}`}
                           </TableCell>
                           <TableCell className="text-foreground">
@@ -209,7 +254,10 @@ export default function CustomerDetailPage() {
                             {new Date(o.createdAt).toLocaleDateString("fa-IR")}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={STATUS[o.status]?.className}>
+                            <Badge
+                              variant="outline"
+                              className={STATUS[o.status]?.className}
+                            >
                               {STATUS[o.status]?.label ?? o.status}
                             </Badge>
                           </TableCell>
