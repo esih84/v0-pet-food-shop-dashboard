@@ -62,6 +62,7 @@ import {
 } from "@/features/blog/mutations";
 import { DataPagination } from "@/components/dashboard/data-pagination";
 import { PAGE_SIZE } from "@/lib/pagination";
+import { RichTextEditor } from "@/components/rich-text-editor";
 
 function slugify(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w؀-ۿ-]/g, "");
@@ -266,15 +267,16 @@ export default function BlogsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="content">محتوا</Label>
-                  <Textarea
-                    id="content"
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(e) =>
-                      setFormData({ ...formData, content: e.target.value })
+                    onChange={(html) =>
+                      setFormData({ ...formData, content: html })
                     }
-                    placeholder="متن مطلب را بنویسید..."
-                    rows={6}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    برای مقاله‌ی کامل تولیدشده با هوش مصنوعی، تب «HTML» را باز کنید
+                    و قطعه‌ی HTML مقاله را بچسبانید.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
