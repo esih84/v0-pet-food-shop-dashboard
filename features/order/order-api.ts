@@ -36,6 +36,14 @@ export interface ShippingAddress {
   note?: string;
 }
 
+export type ShippingMethod = "tipax" | "post";
+
+/** برچسب فارسی روش‌های ارسال (هم‌راستا با enum ShippingMethod بک‌اند). */
+export const SHIPPING_METHOD_LABELS: Record<string, string> = {
+  tipax: "تیپاکس (پس‌کرایه)",
+  post: "پست (پس‌کرایه)",
+};
+
 export interface Order {
   id: string;
   orderNumber?: string | null;
@@ -49,6 +57,7 @@ export interface Order {
   pointsRedeemed: number;
   status: OrderStatus;
   shippingAddress?: ShippingAddress;
+  shippingMethod?: ShippingMethod;
   createdAt: string;
   updatedAt: string;
 }

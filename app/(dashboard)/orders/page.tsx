@@ -42,21 +42,53 @@ import {
   Package,
   Loader2,
   PawPrint,
+  Truck,
 } from "lucide-react";
 import { useOrders } from "@/features/order/queries";
 import { useUpdateOrderStatus } from "@/features/order/mutations";
-import type { OrderStatus } from "@/features/order/order-api";
+import {
+  SHIPPING_METHOD_LABELS,
+  type OrderStatus,
+} from "@/features/order/order-api";
 import { DataPagination } from "@/components/dashboard/data-pagination";
 import { PAGE_SIZE } from "@/lib/pagination";
 
 const STATUS: { value: OrderStatus; label: string; className: string }[] = [
-  { value: "pending", label: "در انتظار", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
-  { value: "confirmed", label: "تأییدشده", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" },
-  { value: "processing", label: "در حال پردازش", className: "bg-blue-400/15 text-blue-500 border-blue-400/30" },
-  { value: "shipped", label: "ارسال‌شده", className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30" },
-  { value: "delivered", label: "تحویل‌شده", className: "bg-green-500/15 text-green-600 border-green-500/30" },
-  { value: "cancelled", label: "لغوشده", className: "bg-red-500/15 text-red-600 border-red-500/30" },
-  { value: "refunded", label: "مرجوع‌شده", className: "bg-gray-500/15 text-gray-600 border-gray-500/30" },
+  {
+    value: "pending",
+    label: "در انتظار",
+    className: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  },
+  {
+    value: "confirmed",
+    label: "تأییدشده",
+    className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
+  },
+  {
+    value: "processing",
+    label: "در حال پردازش",
+    className: "bg-blue-400/15 text-blue-500 border-blue-400/30",
+  },
+  {
+    value: "shipped",
+    label: "ارسال‌شده",
+    className: "bg-indigo-500/15 text-indigo-600 border-indigo-500/30",
+  },
+  {
+    value: "delivered",
+    label: "تحویل‌شده",
+    className: "bg-green-500/15 text-green-600 border-green-500/30",
+  },
+  {
+    value: "cancelled",
+    label: "لغوشده",
+    className: "bg-red-500/15 text-red-600 border-red-500/30",
+  },
+  {
+    value: "refunded",
+    label: "مرجوع‌شده",
+    className: "bg-gray-500/15 text-gray-600 border-gray-500/30",
+  },
 ];
 
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
@@ -66,7 +98,8 @@ const customerName = (o: {
   user?: { firstName?: string; lastName?: string; phone?: string };
 }) => {
   const a = o.shippingAddress;
-  if (a?.firstName || a?.lastName) return `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim();
+  if (a?.firstName || a?.lastName)
+    return `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim();
   if (o.user?.firstName || o.user?.lastName)
     return `${o.user.firstName ?? ""} ${o.user.lastName ?? ""}`.trim();
   return o.user?.phone ?? "—";
@@ -92,13 +125,17 @@ export default function OrdersPage() {
       (order.orderNumber ?? "").toLowerCase().includes(q) ||
       customerName(order).toLowerCase().includes(q) ||
       (order.user?.phone ?? "").includes(q);
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   return (
     <div className="flex flex-col" dir="rtl">
-      <Header title="سفارش‌ها" description="پیگیری و مدیریت سفارش‌های مشتریان." />
+      <Header
+        title="سفارش‌ها"
+        description="پیگیری و مدیریت سفارش‌های مشتریان."
+      />
       <div className="flex-1 p-6 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
@@ -111,7 +148,7 @@ export default function OrdersPage() {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[170px] bg-input">
+            <SelectTrigger className="w-42.5 bg-input">
               <SelectValue placeholder="وضعیت" />
             </SelectTrigger>
             <SelectContent>
@@ -141,21 +178,35 @@ export default function OrdersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground text-right">شماره سفارش</TableHead>
-                    <TableHead className="text-muted-foreground text-right">مشتری</TableHead>
-                    <TableHead className="text-muted-foreground text-right">مبلغ</TableHead>
-                    <TableHead className="text-muted-foreground text-right">تاریخ</TableHead>
-                    <TableHead className="text-muted-foreground text-right">وضعیت</TableHead>
-                    <TableHead className="text-muted-foreground text-left">عملیات</TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      شماره سفارش
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      مشتری
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      مبلغ
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      تاریخ
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
+                      وضعیت
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-left">
+                      عملیات
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((order) => (
                     <TableRow key={order.id} className="border-border">
-                      <TableCell className="font-medium text-foreground" dir="ltr">
+                      <TableCell className="font-medium text-foreground">
                         {order.orderNumber ?? `#${order.id.slice(0, 8)}`}
                       </TableCell>
-                      <TableCell className="text-foreground">{customerName(order)}</TableCell>
+                      <TableCell className="text-foreground">
+                        {customerName(order)}
+                      </TableCell>
                       <TableCell className="text-foreground font-semibold">
                         {toman(order.finalAmount)}
                       </TableCell>
@@ -163,7 +214,10 @@ export default function OrdersPage() {
                         {new Date(order.createdAt).toLocaleDateString("fa-IR")}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusMeta(order.status)?.className}>
+                        <Badge
+                          variant="outline"
+                          className={statusMeta(order.status)?.className}
+                        >
                           {statusMeta(order.status)?.label ?? order.status}
                         </Badge>
                       </TableCell>
@@ -195,7 +249,10 @@ export default function OrdersPage() {
       </div>
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle>جزئیات سفارش</DialogTitle>
             <DialogDescription dir="ltr">
@@ -212,10 +269,17 @@ export default function OrdersPage() {
                   {STATUS.map((opt) => (
                     <Button
                       key={opt.value}
-                      variant={selectedOrder.status === opt.value ? "default" : "outline"}
+                      variant={
+                        selectedOrder.status === opt.value
+                          ? "default"
+                          : "outline"
+                      }
                       size="sm"
                       onClick={() =>
-                        updateStatus.mutate({ id: selectedOrder.id, status: opt.value })
+                        updateStatus.mutate({
+                          id: selectedOrder.id,
+                          status: opt.value,
+                        })
                       }
                       disabled={updateStatus.isPending}
                     >
@@ -226,15 +290,21 @@ export default function OrdersPage() {
               </div>
 
               <div className="space-y-3 border-t border-border pt-4">
-                <h4 className="font-semibold text-foreground">اطلاعات گیرنده</h4>
+                <h4 className="font-semibold text-foreground">
+                  اطلاعات گیرنده
+                </h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">نام</p>
-                    <p className="font-medium text-foreground">{customerName(selectedOrder)}</p>
+                    <p className="font-medium text-foreground">
+                      {customerName(selectedOrder)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">موبایل</p>
-                    <p className="font-medium text-foreground">{selectedOrder.user?.phone ?? "—"}</p>
+                    <p className="font-medium text-foreground">
+                      {selectedOrder.user?.phone ?? "—"}
+                    </p>
                   </div>
                   {selectedOrder.shippingAddress?.petName && (
                     <div className="flex items-center gap-2">
@@ -269,6 +339,19 @@ export default function OrdersPage() {
                 </div>
               )}
 
+              {selectedOrder.shippingMethod && (
+                <div className="space-y-2 border-t border-border pt-4">
+                  <h4 className="font-semibold text-foreground">روش ارسال</h4>
+                  <div className="flex items-center gap-3">
+                    <Truck className="h-5 w-5 text-muted-foreground" />
+                    <p className="text-foreground">
+                      {SHIPPING_METHOD_LABELS[selectedOrder.shippingMethod] ??
+                        selectedOrder.shippingMethod}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 border-t border-border pt-4">
                 <h4 className="font-semibold text-foreground">اقلام سفارش</h4>
                 <div className="space-y-2">
@@ -282,11 +365,17 @@ export default function OrdersPage() {
                           <Package className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{item.productName}</p>
-                          <p className="text-xs text-muted-foreground">تعداد: {item.quantity}</p>
+                          <p className="font-medium text-foreground">
+                            {item.productName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            تعداد: {item.quantity}
+                          </p>
                         </div>
                       </div>
-                      <p className="font-semibold text-foreground">{toman(item.totalPrice)}</p>
+                      <p className="font-semibold text-foreground">
+                        {toman(item.totalPrice)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -304,7 +393,9 @@ export default function OrdersPage() {
                   </div>
                 )}
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-lg font-semibold text-foreground">مبلغ نهایی</span>
+                  <span className="text-lg font-semibold text-foreground">
+                    مبلغ نهایی
+                  </span>
                   <span className="text-2xl font-bold text-primary">
                     {toman(selectedOrder.finalAmount)}
                   </span>
