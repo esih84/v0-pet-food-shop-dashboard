@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/header";
 import {
@@ -46,6 +46,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus,
@@ -59,6 +64,7 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
+  ListFilter,
 } from "lucide-react";
 import { useAdminProducts } from "@/features/product/queries";
 import {
@@ -73,7 +79,10 @@ import {
 } from "@/features/product/mutations";
 import { useCategories } from "@/features/category/queries";
 import { useBrands } from "@/features/brand/queries";
-import { productService } from "@/features/product/product-api";
+import {
+  productService,
+  type ProductAdminFilters,
+} from "@/features/product/product-api";
 import { DataPagination } from "@/components/dashboard/data-pagination";
 import { PAGE_SIZE } from "@/lib/pagination";
 import type {
@@ -117,11 +126,80 @@ const flattenCategories = (
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
-  const { data, isLoading, error } = useAdminProducts(page, PAGE_SIZE);
   const { data: categories = [] } = useCategories();
   const { data: brands = [] } = useBrands();
 
+  // --- فیلترهای سرورساید ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // all | active | inactive
+  const [stockStatus, setStockStatus] = useState<string>("all"); // all | in_stock | out_of_stock | low_stock
+  const [discountFilter, setDiscountFilter] = useState<string>("all"); // all | yes | no
+  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>([]);
+  const [filterBrandIds, setFilterBrandIds] = useState<string[]>([]);
+
+  const toggleFilterCategory = (id: string) =>
+    setFilterCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  const toggleFilterBrand = (id: string) =>
+    setFilterBrandIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  // دیبونس جستجو (سرورساید)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 350);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const filters: ProductAdminFilters = useMemo(
+    () => ({
+      search: debouncedSearch.trim() || undefined,
+      categoryIds: filterCategoryIds.length ? filterCategoryIds : undefined,
+      brandIds: filterBrandIds.length ? filterBrandIds : undefined,
+      stockStatus:
+        stockStatus === "all"
+          ? undefined
+          : (stockStatus as ProductAdminFilters["stockStatus"]),
+      hasDiscount:
+        discountFilter === "all" ? undefined : discountFilter === "yes",
+      isActive:
+        statusFilter === "all" ? undefined : statusFilter === "active",
+    }),
+    [
+      debouncedSearch,
+      filterCategoryIds,
+      filterBrandIds,
+      stockStatus,
+      discountFilter,
+      statusFilter,
+    ],
+  );
+
+  // با هر تغییر فیلتر به صفحه‌ی اول برگرد.
+  const filtersKey = JSON.stringify(filters);
+  useEffect(() => {
+    setPage(1);
+  }, [filtersKey]);
+
+  const { data, isLoading, error } = useAdminProducts(page, PAGE_SIZE, filters);
+
   const products = data?.data ?? [];
+
+  const activeFilterCount =
+    filterCategoryIds.length +
+    filterBrandIds.length +
+    (stockStatus !== "all" ? 1 : 0) +
+    (discountFilter !== "all" ? 1 : 0);
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setStockStatus("all");
+    setDiscountFilter("all");
+    setFilterCategoryIds([]);
+    setFilterBrandIds([]);
+  };
 
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
@@ -150,8 +228,6 @@ export default function ProductsPage() {
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isEditLoading, setIsEditLoading] = useState(false);
@@ -169,6 +245,7 @@ export default function ProductsPage() {
     stock: 0,
     sku: "",
     isActive: true,
+    displayOrder: 0,
   });
   // دسته‌های انتخاب‌شده (چند‌مقداری)
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
@@ -191,20 +268,6 @@ export default function ProductsPage() {
     endDate: "",
   });
 
-  const editingProduct = products.find((p) => p.id === editingProductId);
-
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.category?.name ?? "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" ? product.isActive : !product.isActive);
-    return matchesSearch && matchesStatus;
-  });
-
   const resetForm = () => {
     setFormData({
       name: "",
@@ -216,6 +279,7 @@ export default function ProductsPage() {
       stock: 0,
       sku: "",
       isActive: true,
+      displayOrder: 0,
     });
     setCategoryIds([]);
     setAttributes([{ key: "", value: "" }]);
@@ -248,6 +312,7 @@ export default function ProductsPage() {
         stock: product.stock,
         sku: product.sku ?? "",
         isActive: product.isActive,
+        displayOrder: product.displayOrder ?? 0,
       });
       setCategoryIds(
         product.categories && product.categories.length > 0
@@ -309,6 +374,7 @@ export default function ProductsPage() {
       stock: Number(formData.stock),
       sku: formData.sku || undefined,
       isActive: formData.isActive,
+      displayOrder: Number(formData.displayOrder) || 0,
       attributes: filteredAttributes,
       images: imageFiles.length > 0 ? imageFiles : undefined,
     };
@@ -401,26 +467,139 @@ export default function ProductsPage() {
       <div className="flex-1 p-6 space-y-6">
         {/* Actions Bar */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[180px] max-w-sm">
               <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="جستجو در این صفحه..."
+                placeholder="جستجوی محصولات..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pr-9 bg-input"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+
+            {/* دسته‌بندی (چند‌انتخابی) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ListFilter className="h-4 w-4" />
+                  دسته‌بندی
+                  {filterCategoryIds.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {filterCategoryIds.length.toLocaleString("fa-IR")}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-2" dir="rtl">
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {flattenCategories(categories as CategoryNode[]).map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 rounded px-1 py-1 hover:bg-muted cursor-pointer text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterCategoryIds.includes(c.id)}
+                        onChange={() => toggleFilterCategory(c.id)}
+                      />
+                      <span>{c.label}</span>
+                    </label>
+                  ))}
+                  {categories.length === 0 && (
+                    <p className="text-xs text-muted-foreground px-1">
+                      دسته‌بندی‌ای وجود ندارد
+                    </p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* برند (چند‌انتخابی) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <ListFilter className="h-4 w-4" />
+                  برند
+                  {filterBrandIds.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {filterBrandIds.length.toLocaleString("fa-IR")}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-2" dir="rtl">
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {brands.map((b) => (
+                    <label
+                      key={b.id}
+                      className="flex items-center gap-2 rounded px-1 py-1 hover:bg-muted cursor-pointer text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterBrandIds.includes(b.id)}
+                        onChange={() => toggleFilterBrand(b.id)}
+                      />
+                      <span>{b.name}</span>
+                    </label>
+                  ))}
+                  {brands.length === 0 && (
+                    <p className="text-xs text-muted-foreground px-1">
+                      برندی وجود ندارد
+                    </p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* موجودی */}
+            <Select value={stockStatus} onValueChange={setStockStatus}>
+              <SelectTrigger className="w-[140px] bg-input">
+                <SelectValue placeholder="موجودی" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">موجودی: همه</SelectItem>
+                <SelectItem value="in_stock">موجود</SelectItem>
+                <SelectItem value="out_of_stock">ناموجود</SelectItem>
+                <SelectItem value="low_stock">رو به اتمام</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* تخفیف */}
+            <Select value={discountFilter} onValueChange={setDiscountFilter}>
               <SelectTrigger className="w-[150px] bg-input">
+                <SelectValue placeholder="تخفیف" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">تخفیف: همه</SelectItem>
+                <SelectItem value="yes">تخفیف‌دار</SelectItem>
+                <SelectItem value="no">بدون تخفیف</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* وضعیت */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] bg-input">
                 <SelectValue placeholder="وضعیت" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
+                <SelectItem value="all">وضعیت: همه</SelectItem>
                 <SelectItem value="active">فعال</SelectItem>
                 <SelectItem value="inactive">غیرفعال</SelectItem>
               </SelectContent>
             </Select>
+
+            {(activeFilterCount > 0 || statusFilter !== "all" || searchQuery) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground gap-1"
+                onClick={clearAllFilters}
+              >
+                <X className="h-4 w-4" />
+                پاک کردن
+              </Button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -461,10 +640,10 @@ export default function ProductsPage() {
             >
               <DialogHeader>
                 <DialogTitle>
-                  {editingProduct ? "ویرایش محصول" : "افزودن محصول جدید"}
+                  {editingProductId ? "ویرایش محصول" : "افزودن محصول جدید"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingProduct
+                  {editingProductId
                     ? "اطلاعات محصول، موجودی و مشخصات را به‌روزرسانی کنید."
                     : "یک محصول جدید با قیمت، موجودی و مشخصات بسازید."}
                 </DialogDescription>
@@ -625,15 +804,38 @@ export default function ProductsPage() {
                       />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="isActive">محصول فعال باشد</Label>
-                    <Switch
-                      id="isActive"
-                      checked={formData.isActive}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, isActive: checked })
-                      }
-                    />
+                  <div className="flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="isActive">محصول فعال باشد</Label>
+                      <Switch
+                        id="isActive"
+                        checked={formData.isActive}
+                        onCheckedChange={(checked) =>
+                          setFormData({ ...formData, isActive: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="displayOrder" className="whitespace-nowrap">
+                        ترتیب نمایش{" "}
+                        <span className="text-xs text-muted-foreground">
+                          (بزرگ‌تر = بالاتر)
+                        </span>
+                      </Label>
+                      <Input
+                        id="displayOrder"
+                        type="number"
+                        className="w-24"
+                        value={formData.displayOrder}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            displayOrder: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="images">
@@ -701,7 +903,7 @@ export default function ProductsPage() {
                         ))}
                       </div>
                     )}
-                    {editingProduct && (
+                    {editingProductId && (
                       <p className="text-xs text-muted-foreground">
                         تصاویر جدید به تصاویر فعلی افزوده می‌شوند. با فلش‌ها ترتیب
                         را تغییر دهید (اولین تصویر، تصویر اصلی است).
@@ -944,7 +1146,7 @@ export default function ProductsPage() {
                       <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                       در حال ذخیره...
                     </>
-                  ) : editingProduct ? (
+                  ) : editingProductId ? (
                     "به‌روزرسانی محصول"
                   ) : (
                     "ایجاد محصول"
@@ -986,6 +1188,9 @@ export default function ProductsPage() {
                       موجودی
                     </TableHead>
                     <TableHead className="text-muted-foreground text-right">
+                      ترتیب
+                    </TableHead>
+                    <TableHead className="text-muted-foreground text-right">
                       وضعیت
                     </TableHead>
                     <TableHead className="text-muted-foreground text-left">
@@ -994,7 +1199,7 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((product) => (
+                  {products.map((product) => (
                     <TableRow key={product.id} className="border-border">
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -1028,6 +1233,9 @@ export default function ProductsPage() {
                       </TableCell>
                       <TableCell className="text-foreground">
                         {(product.stock ?? 0).toLocaleString("fa-IR")}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {(product.displayOrder ?? 0).toLocaleString("fa-IR")}
                       </TableCell>
                       <TableCell>
                         <Badge

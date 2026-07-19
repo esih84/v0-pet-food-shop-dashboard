@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { productService } from "./product-api";
+import { productService, type ProductAdminFilters } from "./product-api";
 import { queryKeys } from "@/features/query-keys";
 
 export function useProducts(page = 1, limit = 50) {
@@ -12,11 +12,15 @@ export function useProducts(page = 1, limit = 50) {
   });
 }
 
-// محصولات پنل ادمین — شامل محصولات غیرفعال
-export function useAdminProducts(page = 1, limit = 50) {
+// محصولات پنل ادمین — شامل محصولات غیرفعال، با فیلتر سرورساید
+export function useAdminProducts(
+  page = 1,
+  limit = 50,
+  filters?: ProductAdminFilters,
+) {
   return useQuery({
-    queryKey: [...queryKeys.products, "admin", page, limit],
-    queryFn: () => productService.getAdminProducts(page, limit),
+    queryKey: [...queryKeys.products, "admin", page, limit, filters],
+    queryFn: () => productService.getAdminProducts(page, limit, filters),
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
   });

@@ -22,6 +22,43 @@ export interface ImportProductsResult {
   errors: { row: number; reason: string }[];
 }
 
+/** فیلترهای سرورساید لیست محصولات پنل ادمین. */
+export interface ProductAdminFilters {
+  search?: string;
+  categoryIds?: string[];
+  brandIds?: string[];
+  stockStatus?: "in_stock" | "out_of_stock" | "low_stock";
+  hasDiscount?: boolean;
+  isActive?: boolean;
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
+}
+
+/** ساخت query string از فیلترها (آرایه‌ها به‌صورت CSV؛ خالی‌ها حذف می‌شوند). */
+function buildAdminQuery(
+  page: number,
+  limit: number,
+  filters?: ProductAdminFilters,
+): string {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (!filters) return params.toString();
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  if (filters.categoryIds?.length)
+    params.set("categoryIds", filters.categoryIds.join(","));
+  if (filters.brandIds?.length)
+    params.set("brandIds", filters.brandIds.join(","));
+  if (filters.stockStatus) params.set("stockStatus", filters.stockStatus);
+  if (filters.hasDiscount !== undefined)
+    params.set("hasDiscount", String(filters.hasDiscount));
+  if (filters.isActive !== undefined)
+    params.set("isActive", String(filters.isActive));
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+  return params.toString();
+}
+
 /**
  * اگر تصویری ضمیمه شده باشد بدنه را به FormData (multipart) تبدیل می‌کند تا
  * همراه تصاویر ارسال شود؛ در این حالت آرایه‌ها (attributes) به‌صورت JSON رشته‌ای
@@ -57,10 +94,14 @@ export const productService = {
     return res.data.data;
   },
 
-  // لیست همه‌ی محصولات (شامل غیرفعال) برای پنل ادمین
-  async getAdminProducts(page = 1, limit = 50) {
+  // لیست همه‌ی محصولات (شامل غیرفعال) برای پنل ادمین — با فیلتر سرورساید
+  async getAdminProducts(
+    page = 1,
+    limit = 50,
+    filters?: ProductAdminFilters,
+  ) {
     const res = await axiosInstance.get<ApiResponse<PaginatedResult<Product>>>(
-      `/products/admin/all?page=${page}&limit=${limit}`,
+      `/products/admin/all?${buildAdminQuery(page, limit, filters)}`,
     );
     return res.data.data;
   },

@@ -42,6 +42,8 @@ export type Product = {
   stock: number;
   sku?: string;
   isActive: boolean;
+  /** ترتیب نمایش دستی (عدد بزرگ‌تر = بالاتر) */
+  displayOrder?: number;
 
   categoryId?: string;
   category?: Category | null;
@@ -71,6 +73,8 @@ export interface CreateProductInput {
   categoryIds?: string[];
   brandId?: string;
   isActive?: boolean;
+  /** ترتیب نمایش دستی (عدد بزرگ‌تر = بالاتر) */
+  displayOrder?: number;
   attributes?: ProductAttribute[];
   /** تصاویر محصول — هنگام ساخت/ویرایش آپلود می‌شوند (اولین تصویر، تصویر اصلی) */
   images?: File[];
