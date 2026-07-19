@@ -19,7 +19,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Loader2, FolderTree, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  FolderTree,
+  Pencil,
+  Star,
+  Search,
+} from "lucide-react";
 import { useCategories } from "@/features/category/queries";
 import {
   useCreateCategory,
@@ -46,6 +63,14 @@ export default function CategoriesPage() {
   const [parentId, setParentId] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [order, setOrder] = useState<number>(0);
+
+  // جست‌وجو و فیلتر (کلاینت‌ساید — کل درخت در حافظه است).
+  const [search, setSearch] = useState("");
+  const [featuredFilter, setFeaturedFilter] = useState<"all" | "yes" | "no">(
+    "all",
+  );
 
   const flat: (Category & { depth: number })[] = [];
   const walk = (list: Category[], depth = 0) => {
@@ -55,6 +80,22 @@ export default function CategoriesPage() {
     }
   };
   walk(categories);
+
+  const q = search.trim().toLowerCase();
+  const filtered = flat.filter((c) => {
+    const matchText =
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.slug.toLowerCase().includes(q);
+    const matchFeatured =
+      featuredFilter === "all"
+        ? true
+        : featuredFilter === "yes"
+          ? !!c.isFeatured
+          : !c.isFeatured;
+    return matchText && matchFeatured;
+  });
+  const isFiltering = q !== "" || featuredFilter !== "all";
 
   const isSaving = createCategory.isPending || updateCategory.isPending;
 
@@ -66,6 +107,8 @@ export default function CategoriesPage() {
     setParentId("");
     setImageFile(null);
     setCurrentImageUrl("");
+    setIsFeatured(false);
+    setOrder(0);
   };
 
   const openCreate = () => {
@@ -81,6 +124,8 @@ export default function CategoriesPage() {
     setParentId(c.parentId ?? "");
     setImageFile(null);
     setCurrentImageUrl(c.imageUrl ?? "");
+    setIsFeatured(c.isFeatured ?? false);
+    setOrder(c.order ?? 0);
     setOpen(true);
   };
 
@@ -90,6 +135,8 @@ export default function CategoriesPage() {
       name,
       slug: slug || slugify(name),
       parentId: parentId || undefined,
+      isFeatured,
+      order,
       image: imageFile ?? undefined,
     };
     if (editingId) {
@@ -189,6 +236,35 @@ export default function CategoriesPage() {
                     </p>
                   )}
                 </div>
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="cat-featured">نمایش در صفحه‌ی اصلی</Label>
+                    <p className="text-xs text-muted-foreground">
+                      این دسته/زیردسته در بخش دسته‌بندی صفحه‌ی اصلی دیده می‌شود.
+                    </p>
+                  </div>
+                  <Switch
+                    id="cat-featured"
+                    checked={isFeatured}
+                    onCheckedChange={setIsFeatured}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cat-order">
+                    ترتیب نمایش{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (عدد کوچک‌تر = بالاتر)
+                    </span>
+                  </Label>
+                  <Input
+                    id="cat-order"
+                    type="number"
+                    className="w-32"
+                    value={order}
+                    onChange={(e) => setOrder(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button onClick={handleSubmit} disabled={isSaving || !name}>
@@ -203,7 +279,37 @@ export default function CategoriesPage() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">فهرست دسته‌بندی‌ها</CardTitle>
-            <CardDescription>{flat.length.toLocaleString("fa-IR")} دسته</CardDescription>
+            <CardDescription>
+              {isFiltering
+                ? `${filtered.length.toLocaleString("fa-IR")} از ${flat.length.toLocaleString("fa-IR")} دسته`
+                : `${flat.length.toLocaleString("fa-IR")} دسته`}
+            </CardDescription>
+            <div className="flex flex-wrap items-center gap-2 pt-3">
+              <div className="relative flex-1 min-w-[180px] max-w-sm">
+                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="جستجوی نام یا اسلاگ..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pr-9 bg-input"
+                />
+              </div>
+              <Select
+                value={featuredFilter}
+                onValueChange={(v) =>
+                  setFeaturedFilter(v as "all" | "yes" | "no")
+                }
+              >
+                <SelectTrigger className="w-[190px] bg-input">
+                  <SelectValue placeholder="صفحه‌ی اصلی" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">صفحه‌ی اصلی: همه</SelectItem>
+                  <SelectItem value="yes">صفحه‌ی اصلی: بله</SelectItem>
+                  <SelectItem value="no">صفحه‌ی اصلی: خیر</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -212,9 +318,11 @@ export default function CategoriesPage() {
               </div>
             ) : flat.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">هنوز دسته‌بندی‌ای ثبت نشده است.</p>
+            ) : filtered.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">نتیجه‌ای برای جست‌وجو یافت نشد.</p>
             ) : (
               <div className="space-y-2">
-                {flat.map((c) => (
+                {filtered.map((c) => (
                   <div
                     key={c.id}
                     className="flex items-center justify-between rounded-lg border border-border p-3"
@@ -234,7 +342,18 @@ export default function CategoriesPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{c.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">{c.name}</p>
+                          {c.isFeatured && (
+                            <Badge
+                              variant="outline"
+                              className="gap-1 bg-amber-500/15 text-amber-600 border-amber-500/30"
+                            >
+                              <Star className="h-3 w-3 fill-current" />
+                              صفحه‌ی اصلی
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground" dir="ltr">{c.slug}</p>
                       </div>
                     </div>

@@ -10,6 +10,10 @@ export interface CreateCategoryInput {
   description?: string;
   parentId?: string;
   imageUrl?: string;
+  /** ترتیب نمایش (عدد کوچک‌تر = بالاتر) */
+  order?: number;
+  /** نمایش در بخش دسته‌بندی صفحه‌ی اصلی */
+  isFeatured?: boolean;
   /** فایل تصویر — در صورت آپلود به‌جای imageUrl استفاده می‌شود (multipart) */
   image?: File;
 }
