@@ -24,6 +24,8 @@ export type Banner = {
   imageUrl: string;
   mobileImageUrl?: string;
   link?: string;
+  /** متن دکمه‌ی روی بنر؛ خالی باشد دکمه نمایش داده نمی‌شود */
+  buttonText?: string;
   // string می‌ماند تا داده‌های قدیمی با جایگاه‌های حذف‌شده هم قابل نمایش باشند
   position: string;
   order: number;

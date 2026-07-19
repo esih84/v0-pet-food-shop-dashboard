@@ -72,7 +72,9 @@ export default function BannersPage() {
     title: "",
     description: "",
     imageUrl: "",
+    mobileImageUrl: "",
     link: "",
+    buttonText: "",
     position: "home_main",
     order: 1,
     isActive: true,
@@ -98,7 +100,9 @@ export default function BannersPage() {
         title: banner.title || "",
         description: banner.description || "",
         imageUrl: banner.imageUrl || "",
+        mobileImageUrl: banner.mobileImageUrl || "",
         link: banner.link || "",
+        buttonText: banner.buttonText || "",
         position: banner.position || "home_main",
         order: banner.order || 1,
         isActive: banner.isActive ?? true,
@@ -115,7 +119,9 @@ export default function BannersPage() {
         title: formData.title,
         description: formData.description || undefined,
         imageUrl: formData.imageUrl || undefined,
+        mobileImageUrl: formData.mobileImageUrl || undefined,
         link: formData.link || undefined,
+        buttonText: formData.buttonText || undefined,
         position: formData.position || undefined,
         order: formData.order,
         isActive: formData.isActive,
@@ -206,24 +212,46 @@ export default function BannersPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="image">تصویر بنر (دسکتاپ)</Label>
+                {/* تصویر دسکتاپ — الزامی: فایل آپلود کنید یا URL بدهید */}
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <p className="text-sm font-medium">تصویر دسکتاپ (الزامی)</p>
+                  <p className="text-xs text-muted-foreground">
+                    نسبت پیشنهادی: ۳:۱ برای اسلایدر اصلی، ۲:۱ برای بنرهای کناری،
+                    ۵:۲ برای برندها.
+                  </p>
+                  <Label htmlFor="image">آپلود فایل</Label>
                   <Input
                     id="image"
                     type="file"
                     accept="image/*"
-                    onChange={(e) =>
-                      setImageFile(e.target.files?.[0] ?? null)
-                    }
+                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                   />
                   {imageFile && (
                     <p className="text-xs text-muted-foreground">
                       انتخاب‌شده: {imageFile.name}
                     </p>
                   )}
+                  <Label htmlFor="imageUrl">یا آدرس تصویر (URL)</Label>
+                  <Input
+                    id="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, imageUrl: e.target.value })
+                    }
+                    placeholder="https://example.com/banner.jpg"
+                    dir="ltr"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mobileImage">تصویر بنر (موبایل)</Label>
+
+                {/* تصویر موبایل — اختیاری؛ اگر خالی بماند تصویر دسکتاپ نمایش داده می‌شود */}
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <p className="text-sm font-medium">تصویر موبایل (اختیاری)</p>
+                  <p className="text-xs text-muted-foreground">
+                    اگر خالی بماند، در موبایل همان تصویر دسکتاپ نمایش داده
+                    می‌شود. نسبت پیشنهادی: ۵:۲ برای اسلایدر اصلی، ۲:۱ برای
+                    بنرهای کناری، ۵:۲ برای برندها.
+                  </p>
+                  <Label htmlFor="mobileImage">آپلود فایل</Label>
                   <Input
                     id="mobileImage"
                     type="file"
@@ -237,16 +265,17 @@ export default function BannersPage() {
                       انتخاب‌شده: {mobileImageFile.name}
                     </p>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="imageUrl">یا آدرس تصویر (URL)</Label>
+                  <Label htmlFor="mobileImageUrl">یا آدرس تصویر (URL)</Label>
                   <Input
-                    id="imageUrl"
-                    value={formData.imageUrl}
+                    id="mobileImageUrl"
+                    value={formData.mobileImageUrl}
                     onChange={(e) =>
-                      setFormData({ ...formData, imageUrl: e.target.value })
+                      setFormData({
+                        ...formData,
+                        mobileImageUrl: e.target.value,
+                      })
                     }
-                    placeholder="https://example.com/banner.jpg"
+                    placeholder="https://example.com/banner-mobile.jpg"
                     dir="ltr"
                   />
                 </div>
@@ -262,6 +291,24 @@ export default function BannersPage() {
                     placeholder="https://example.com/sale"
                     dir="ltr"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    کل بنر با این لینک کلیک‌پذیر می‌شود.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="buttonText">متن دکمه</Label>
+                  <Input
+                    id="buttonText"
+                    value={formData.buttonText}
+                    onChange={(e) =>
+                      setFormData({ ...formData, buttonText: e.target.value })
+                    }
+                    placeholder="مشاهده محصولات"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    اگر خالی بماند دکمه‌ای روی بنر نمایش داده نمی‌شود (کل بنر
+                    همچنان کلیک‌پذیر است).
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

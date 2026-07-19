@@ -8,6 +8,8 @@ export interface CreateBannerInput {
   imageUrl?: string;
   mobileImageUrl?: string;
   link?: string;
+  /** متن دکمه‌ی روی بنر؛ خالی باشد دکمه نمایش داده نمی‌شود */
+  buttonText?: string;
   position?: string;
   order?: number;
   isActive?: boolean;
