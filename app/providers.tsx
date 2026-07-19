@@ -10,6 +10,7 @@ import { ReactNode, useState } from 'react'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from '@/components/theme-provider'
 
 /** پیام خطای خوانا را از پاسخ بک‌اند/axios استخراج می‌کند. */
 function getErrorMessage(error: unknown): string {
@@ -61,9 +62,16 @@ export function Providers({ children }: { children: ReactNode }) {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster richColors position="top-center" dir="rtl" />
-    </QueryClientProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <Toaster richColors position="top-center" dir="rtl" />
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }

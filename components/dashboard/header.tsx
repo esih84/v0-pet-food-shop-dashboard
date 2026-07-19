@@ -4,6 +4,7 @@ import { Bell, Menu, Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
+import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,8 @@ export function Header({ title, description }: HeaderProps) {
             className="w-64 bg-input pl-9"
           />
         </div>
+
+        <ThemeToggle />
 
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
