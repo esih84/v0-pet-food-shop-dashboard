@@ -14,3 +14,16 @@ export function useRecomputeRfm() {
     },
   });
 }
+
+/** Saving thresholds recomputes segments on the server, so the lists are invalidated too. */
+export function useUpdateRfmSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: crmService.updateRfmSettings,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.crmRfmSettings });
+      qc.invalidateQueries({ queryKey: queryKeys.crmCustomers });
+      qc.invalidateQueries({ queryKey: queryKeys.crmSegments });
+    },
+  });
+}

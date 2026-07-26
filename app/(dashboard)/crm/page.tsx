@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/dashboard/header";
 import {
@@ -19,6 +20,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Users,
   UserCheck,
@@ -27,10 +39,18 @@ import {
   Loader2,
   RefreshCw,
   ArrowLeft,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useSegments, useCrmCustomers } from "@/features/crm/queries";
-import { useRecomputeRfm } from "@/features/crm/mutations";
+import {
+  useSegments,
+  useCrmCustomers,
+  useRfmSettings,
+} from "@/features/crm/queries";
+import {
+  useRecomputeRfm,
+  useUpdateRfmSettings,
+} from "@/features/crm/mutations";
 import { SEGMENT_LABELS, SEGMENT_ORDER } from "@/features/crm/crm-api";
 
 const fa = (v: number) => v.toLocaleString("fa-IR");
@@ -45,7 +65,7 @@ function daysSince(date?: string | null): string {
   return `${d.toLocaleString("fa-IR")} روز پیش`;
 }
 
-/** رنگ نوار توزیع هر سگمنت (پرشده). */
+/** Distribution-bar color for each segment (filled). */
 const segmentBarClass: Record<string, string> = {
   champion: "bg-primary",
   loyal: "bg-blue-500",
@@ -56,7 +76,7 @@ const segmentBarClass: Record<string, string> = {
   prospect: "bg-muted-foreground/40",
 };
 
-/** رنگ بج سگمنت (کم‌رنگ) — هم‌راستا با صفحه‌ی مشتریان. */
+/** Segment badge color (light) — aligned with the customers page. */
 const segmentBadgeClass: Record<string, string> = {
   champion: "bg-primary/15 text-primary border-primary/30",
   loyal: "bg-blue-500/15 text-blue-600 border-blue-500/30",
@@ -67,7 +87,7 @@ const segmentBadgeClass: Record<string, string> = {
   prospect: "",
 };
 
-/** توضیح کوتاه هر سگمنت برای نمایش در کارت‌ها. */
+/** Short description of each segment for display in the cards. */
 const segmentHint: Record<string, string> = {
   champion: "خرید زیاد و اخیر — ارزشمندترین مشتریان",
   loyal: "خریدهای مکرر و پایدار",
@@ -77,6 +97,167 @@ const segmentHint: Record<string, string> = {
   lost: "مدت زیادی است خریدی نداشته‌اند",
   prospect: "ثبت‌نام کرده اما هنوز خریدی نداشته",
 };
+
+type ThresholdForm = {
+  championMinSpent: string;
+  loyalMinOrders: string;
+  atRiskDays: string;
+  lostDays: string;
+};
+
+const THRESHOLD_FIELDS: {
+  key: keyof ThresholdForm;
+  label: string;
+  hint: string;
+  min: number;
+}[] = [
+  {
+    key: "championMinSpent",
+    label: "حداقل مبلغ خرید برای «قهرمان» (تومان)",
+    hint: "مشتری با دست‌کم ۲ سفارش که مجموع خریدش از این مبلغ بیشتر باشد، قهرمان می‌شود.",
+    min: 0,
+  },
+  {
+    key: "loyalMinOrders",
+    label: "حداقل تعداد سفارش برای «وفادار»",
+    hint: "مشتری اخیر که به این تعداد سفارش رسیده ولی هنوز به مبلغ قهرمانی نرسیده، وفادار است.",
+    min: 1,
+  },
+  {
+    key: "atRiskDays",
+    label: "روزهای بی‌خریدی تا «در معرض ریزش»",
+    hint: "پس از این تعداد روز از آخرین خرید، مشتری در معرض ریزش علامت می‌خورد.",
+    min: 1,
+  },
+  {
+    key: "lostDays",
+    label: "روزهای بی‌خریدی تا «از دست‌رفته»",
+    hint: "باید بزرگ‌تر از روزهای «در معرض ریزش» باشد.",
+    min: 1,
+  },
+];
+
+/**
+ * Editor for the RFM thresholds. Saving recomputes every customer's segment on the server,
+ * so the dialog reports how many customers actually moved — that number is the only visible
+ * confirmation that a threshold change did something.
+ */
+function RfmSettingsDialog() {
+  const { data: settings, isLoading } = useRfmSettings();
+  const update = useUpdateRfmSettings();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<ThresholdForm | null>(null);
+
+  // Re-seed whenever the dialog opens so a cancelled edit never sticks around.
+  useEffect(() => {
+    if (open && settings) {
+      setForm({
+        championMinSpent: String(settings.championMinSpent),
+        loyalMinOrders: String(settings.loyalMinOrders),
+        atRiskDays: String(settings.atRiskDays),
+        lostDays: String(settings.lostDays),
+      });
+    }
+  }, [open, settings]);
+
+  const numbers = form && {
+    championMinSpent: Number(form.championMinSpent),
+    loyalMinOrders: Number(form.loyalMinOrders),
+    atRiskDays: Number(form.atRiskDays),
+    lostDays: Number(form.lostDays),
+  };
+
+  const daysOutOfOrder = !!numbers && numbers.atRiskDays >= numbers.lostDays;
+  const hasBlank = !!form && Object.values(form).some((v) => v.trim() === "");
+  const invalid =
+    !numbers ||
+    hasBlank ||
+    daysOutOfOrder ||
+    Object.values(numbers).some((v) => !Number.isFinite(v) || v < 0);
+
+  const handleSave = async () => {
+    if (!numbers || invalid) return;
+    try {
+      const res = await update.mutateAsync(numbers);
+      toast.success(
+        `معیارها ذخیره شد و ${fa(res.updated)} مشتری سگمنت یا امتیازشان تغییر کرد.`,
+      );
+      setOpen(false);
+    } catch {
+      /* Global toast */
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2" disabled={isLoading}>
+          <SlidersHorizontal className="h-4 w-4" />
+          تنظیم معیارها
+        </Button>
+      </DialogTrigger>
+      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>معیارهای سگمنت‌بندی RFM</DialogTitle>
+          <DialogDescription>
+            با ذخیره‌ی این اعداد، سگمنت همه‌ی مشتریان بی‌درنگ دوباره محاسبه می‌شود.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!form ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            {THRESHOLD_FIELDS.map((f) => (
+              <div key={f.key} className="space-y-1.5">
+                <Label htmlFor={f.key} className="text-sm">
+                  {f.label}
+                </Label>
+                <Input
+                  id={f.key}
+                  type="number"
+                  min={f.min}
+                  dir="ltr"
+                  className="text-left"
+                  value={form[f.key]}
+                  onChange={(e) =>
+                    setForm({ ...form, [f.key]: e.target.value })
+                  }
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {f.hint}
+                </p>
+              </div>
+            ))}
+
+            {daysOutOfOrder && (
+              <p className="text-sm text-red-600">
+                روزهای «در معرض ریزش» باید کمتر از روزهای «از دست‌رفته» باشد،
+                وگرنه هیچ مشتری در سگمنت «در معرض ریزش» قرار نمی‌گیرد.
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            انصراف
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={invalid || update.isPending}
+            className="gap-2"
+          >
+            {update.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            ذخیره و بازمحاسبه
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function CrmPage() {
   const { data: segments, isLoading } = useSegments();
@@ -101,9 +282,11 @@ export default function CrmPage() {
   const handleRecompute = async () => {
     try {
       const res = await recompute.mutateAsync();
-      toast.success(`بازمحاسبه انجام شد (${fa(res.updated)} مشتری).`);
+      toast.success(
+        `بازمحاسبه انجام شد — سگمنت یا امتیاز ${fa(res.updated)} مشتری تغییر کرد.`,
+      );
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -144,11 +327,11 @@ export default function CrmPage() {
     <div className="flex flex-col" dir="rtl">
       <Header
         title="مدیریت ارتباط با مشتری (CRM)"
-        description="نمای کلی سگمنت‌بندی مشتریان بر اساس تحلیل RFM."
+        description="نمای کلی سگمنت‌بندی مشتریان بر اساس تحلیل RFM. سگمنت‌ها هر شب ساعت ۳ بامداد به‌صورت خودکار به‌روز می‌شوند."
       />
 
       <div className="flex-1 space-y-6 p-6">
-        {/* اکشن‌ها */}
+        {/* Actions */}
         <div className="flex items-center justify-between">
           <Link href="/customers">
             <Button variant="outline" className="gap-2">
@@ -156,19 +339,22 @@ export default function CrmPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleRecompute}
-            disabled={recompute.isPending}
-          >
-            {recompute.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            بازمحاسبه‌ی RFM
-          </Button>
+          <div className="flex items-center gap-2">
+            <RfmSettingsDialog />
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRecompute}
+              disabled={recompute.isPending}
+            >
+              {recompute.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              بازمحاسبه‌ی RFM
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -177,7 +363,7 @@ export default function CrmPage() {
           </div>
         ) : (
           <>
-            {/* KPIها */}
+            {/* KPIs */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {kpis.map((k) => (
                 <Card key={k.label} className="border-border bg-card">
@@ -198,7 +384,7 @@ export default function CrmPage() {
               ))}
             </div>
 
-            {/* توزیع سگمنت‌ها */}
+            {/* Segment distribution */}
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="text-foreground">
@@ -235,7 +421,7 @@ export default function CrmPage() {
               </CardContent>
             </Card>
 
-            {/* کارت‌های سگمنت */}
+            {/* Segment cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {SEGMENT_ORDER.map((s) => {
                 const n = counts[s] ?? 0;
@@ -265,7 +451,7 @@ export default function CrmPage() {
               })}
             </div>
 
-            {/* مشتریان ویژه (قهرمان) */}
+            {/* Top customers (champions) */}
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="text-foreground">

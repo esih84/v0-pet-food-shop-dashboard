@@ -3,7 +3,7 @@ import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 import type { Customer } from "@/features/customer/customer-api";
 import type { CustomerFilter } from "@/features/sms/sms-api";
 
-/** برچسب فارسی سگمنت‌ها. */
+/** Persian labels of the segments. */
 export const SEGMENT_LABELS: Record<string, string> = {
   champion: "قهرمان (VIP)",
   loyal: "وفادار",
@@ -23,6 +23,23 @@ export const SEGMENT_ORDER = [
   "lost",
   "prospect",
 ] as const;
+
+/** Admin-tunable thresholds that decide which segment a customer falls into. */
+export type RfmSettings = {
+  id: string;
+  championMinSpent: number;
+  atRiskDays: number;
+  lostDays: number;
+  loyalMinOrders: number;
+  updatedAt: string;
+};
+
+export type RfmSettingsInput = Partial<
+  Pick<
+    RfmSettings,
+    "championMinSpent" | "atRiskDays" | "lostDays" | "loyalMinOrders"
+  >
+>;
 
 export const crmService = {
   async getCustomers(filter: CustomerFilter & { page?: number; limit?: number }) {
@@ -47,6 +64,20 @@ export const crmService = {
     const res = await axiosInstance.post<ApiResponse<{ updated: number }>>(
       "/crm/recompute-rfm",
     );
+    return res.data.data;
+  },
+
+  async getRfmSettings() {
+    const res =
+      await axiosInstance.get<ApiResponse<RfmSettings>>("/crm/rfm-settings");
+    return res.data.data;
+  },
+
+  /** Saving also recomputes every segment server-side, hence the `updated` count. */
+  async updateRfmSettings(input: RfmSettingsInput) {
+    const res = await axiosInstance.put<
+      ApiResponse<{ settings: RfmSettings; updated: number }>
+    >("/crm/rfm-settings", input);
     return res.data.data;
   },
 };

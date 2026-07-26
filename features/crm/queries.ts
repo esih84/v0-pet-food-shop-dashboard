@@ -22,3 +22,11 @@ export function useSegments() {
     staleTime: 60 * 1000,
   });
 }
+
+export function useRfmSettings() {
+  return useQuery({
+    queryKey: queryKeys.crmRfmSettings,
+    queryFn: crmService.getRfmSettings,
+    staleTime: 5 * 60 * 1000,
+  });
+}
