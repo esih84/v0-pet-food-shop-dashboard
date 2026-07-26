@@ -1,6 +1,6 @@
 /**
- * کلیدهای متمرکز React Query برای کل داشبورد.
- * هر feature از این‌جا کلید می‌گیرد تا invalidate/کش یکدست بماند.
+ * Centralized React Query keys for the whole dashboard.
+ * Each feature gets its keys from here so invalidation/caching stays consistent.
  */
 export const queryKeys = {
   products: ["products"] as const,
@@ -44,7 +44,12 @@ export const queryKeys = {
 
   crmCustomers: ["crm-customers"] as const,
   crmSegments: ["crm-segments"] as const,
+  crmRfmSettings: ["crm-rfm-settings"] as const,
+
+  cancellationReasons: ["cancellation-reasons"] as const,
+  activeCancellationReasons: ["cancellation-reasons", "active"] as const,
+  cancellationReasonStats: ["cancellation-reason-stats"] as const,
 } as const;
 
-// نام‌های مستعار پرکاربرد
+// Commonly used aliases
 export const CURRENT_ADMIN_KEY = queryKeys.currentAdmin;

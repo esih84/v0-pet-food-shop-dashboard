@@ -50,18 +50,19 @@ import {
   SHIPPING_METHOD_LABELS,
   type OrderStatus,
 } from "@/features/order/order-api";
+import { useActiveCancellationReasons } from "@/features/cancellation-reason/queries";
 import { DataPagination } from "@/components/dashboard/data-pagination";
 import { PAGE_SIZE } from "@/lib/pagination";
 
 const STATUS: { value: OrderStatus; label: string; className: string }[] = [
   {
-    value: "pending",
+    value: "awaiting_payment",
     label: "در انتظار",
     className: "bg-amber-500/15 text-amber-600 border-amber-500/30",
   },
   {
-    value: "confirmed",
-    label: "تأییدشده",
+    value: "paid",
+    label: "پرداخت شده",
     className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
   },
   {
@@ -115,8 +116,19 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // Cancellation requires picking a reason; entering "cancel mode" reveals the reason picker.
+  const [cancelMode, setCancelMode] = useState(false);
+  const [reasonId, setReasonId] = useState("");
+  const { data: activeReasons = [] } = useActiveCancellationReasons();
 
   const selectedOrder = orders.find((o) => o.id === selectedId);
+
+  const openDetail = (id: string) => {
+    setSelectedId(id);
+    setCancelMode(false);
+    setReasonId("");
+    setIsDetailOpen(true);
+  };
 
   const filtered = orders.filter((order) => {
     const q = searchQuery.toLowerCase();
@@ -225,10 +237,7 @@ export default function OrdersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            setSelectedId(order.id);
-                            setIsDetailOpen(true);
-                          }}
+                          onClick={() => openDetail(order.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -275,18 +284,84 @@ export default function OrdersPage() {
                           : "outline"
                       }
                       size="sm"
-                      onClick={() =>
+                      onClick={() => {
+                        if (opt.value === "cancelled") {
+                          // Cancelling needs a reason — reveal the picker instead of mutating.
+                          setReasonId("");
+                          setCancelMode(true);
+                          return;
+                        }
+                        setCancelMode(false);
                         updateStatus.mutate({
                           id: selectedOrder.id,
                           status: opt.value,
-                        })
-                      }
+                        });
+                      }}
                       disabled={updateStatus.isPending}
                     >
                       {opt.label}
                     </Button>
                   ))}
                 </div>
+
+                {cancelMode && (
+                  <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                    <p className="text-sm font-medium text-foreground">
+                      برای لغو سفارش، دلیل را انتخاب کنید:
+                    </p>
+                    <Select value={reasonId} onValueChange={setReasonId}>
+                      <SelectTrigger className="bg-input">
+                        <SelectValue placeholder="انتخاب دلیل لغو" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeReasons.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={!reasonId || updateStatus.isPending}
+                        onClick={() =>
+                          updateStatus.mutate(
+                            {
+                              id: selectedOrder.id,
+                              status: "cancelled",
+                              cancellationReasonId: reasonId,
+                            },
+                            { onSuccess: () => setCancelMode(false) },
+                          )
+                        }
+                      >
+                        {updateStatus.isPending && (
+                          <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                        )}
+                        تأیید لغو
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCancelMode(false)}
+                      >
+                        انصراف
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedOrder.status === "cancelled" &&
+                  selectedOrder.cancellationReason && (
+                    <p className="text-sm text-muted-foreground">
+                      دلیل لغو:{" "}
+                      <span className="font-medium text-foreground">
+                        {selectedOrder.cancellationReason.label}
+                      </span>
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-3 border-t border-border pt-4">

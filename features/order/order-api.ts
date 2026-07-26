@@ -2,8 +2,8 @@ import axiosInstance from "@/lib/auth/axios-instance";
 import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 
 export type OrderStatus =
-  | "pending"
-  | "confirmed"
+  | "awaiting_payment"
+  | "paid"
   | "processing"
   | "shipped"
   | "delivered"
@@ -38,11 +38,17 @@ export interface ShippingAddress {
 
 export type ShippingMethod = "tipax" | "post";
 
-/** برچسب فارسی روش‌های ارسال (هم‌راستا با enum ShippingMethod بک‌اند). */
+/** Persian labels of the shipping methods (aligned with the backend's ShippingMethod enum). */
 export const SHIPPING_METHOD_LABELS: Record<string, string> = {
   tipax: "تیپاکس (پس‌کرایه)",
   post: "پست (پس‌کرایه)",
 };
+
+/** Lightweight reference to the cancellation reason attached to a cancelled order. */
+export interface OrderCancellationReason {
+  id: string;
+  label: string;
+}
 
 export interface Order {
   id: string;
@@ -58,6 +64,9 @@ export interface Order {
   status: OrderStatus;
   shippingAddress?: ShippingAddress;
   shippingMethod?: ShippingMethod;
+  cancellationReasonId?: string | null;
+  cancellationReason?: OrderCancellationReason | null;
+  cancelledAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -84,10 +93,14 @@ export const orderService = {
     return res.data.data;
   },
 
-  async updateOrderStatus(id: string, status: OrderStatus) {
+  async updateOrderStatus(
+    id: string,
+    status: OrderStatus,
+    cancellationReasonId?: string,
+  ) {
     const res = await axiosInstance.put<ApiResponse<Order>>(
       `/orders/${id}/status`,
-      { status },
+      { status, cancellationReasonId },
     );
     return res.data.data;
   },

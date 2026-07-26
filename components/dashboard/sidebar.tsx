@@ -23,6 +23,7 @@ import {
   ChevronRight,
   MessageCircle,
   PieChart,
+  XCircle,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -36,6 +37,7 @@ const navItems = [
   { href: "/categories", label: "دسته‌بندی‌ها", icon: FolderTree },
   { href: "/brands", label: "برندها", icon: Tag },
   { href: "/orders", label: "سفارش‌ها", icon: ShoppingCart },
+  { href: "/cancellation-reasons", label: "دلایل لغو سفارش", icon: XCircle },
   { href: "/customers", label: "مشتریان", icon: Users },
   { href: "/crm", label: "CRM", icon: PieChart },
   { href: "/pets", label: "حیوانات خانگی", icon: PawPrint },
@@ -53,14 +55,14 @@ export function Sidebar() {
   const { logout, logoutPending } = useAuth();
   const { mobileOpen, closeMobile } = useSidebar();
 
-  // با تغییر مسیر، کشوی موبایل بسته شود
+  // Close the mobile drawer when the route changes
   useEffect(() => {
     closeMobile();
   }, [pathname, closeMobile]);
 
   return (
     <>
-      {/* پس‌زمینه‌ی تیره پشت کشو در موبایل */}
+      {/* Dark backdrop behind the drawer on mobile */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -72,10 +74,10 @@ export function Sidebar() {
       <aside
         className={cn(
           "z-50 flex h-full flex-col border-l border-border bg-sidebar transition-all duration-300",
-          // موبایل: کشوی ثابت که از سمت راست باز/بسته می‌شود
+          // Mobile: a fixed drawer that opens/closes from the right
           "fixed inset-y-0 right-0 w-64 lg:relative lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0",
-          // دسکتاپ: حالت باز/جمع‌شده
+          // Desktop: expanded/collapsed state
           collapsed ? "lg:w-16" : "lg:w-64",
         )}
       >
@@ -111,7 +113,7 @@ export function Sidebar() {
             </Link>
           )}
 
-          {/* بستن کشو در موبایل */}
+          {/* Close the drawer on mobile */}
           <Button
             variant="ghost"
             size="icon"
@@ -123,7 +125,7 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* دکمه‌ی جمع‌کردن — فقط دسکتاپ */}
+        {/* Collapse button — desktop only */}
         <Button
           variant="ghost"
           size="icon"

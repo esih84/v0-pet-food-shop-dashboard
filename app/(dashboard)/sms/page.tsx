@@ -59,10 +59,10 @@ import {
 import type {
   SmsTemplate,
   SmsEvent,
-  OrderStatus,
   CustomerFilter,
 } from "@/features/sms/sms-api";
 import { SEGMENT_LABELS, SEGMENT_ORDER } from "@/features/crm/crm-api";
+import { OrderStatus } from "@/features/order/order-api";
 
 const EVENT_LABELS: Record<SmsEvent, string> = {
   purchase_paid: "پس از پرداخت",
@@ -71,8 +71,8 @@ const EVENT_LABELS: Record<SmsEvent, string> = {
 };
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "در انتظار پرداخت",
-  confirmed: "تأیید شد",
+  awaiting_payment: "در انتظار پرداخت",
+  paid: "تأیید شد",
   processing: "در حال آماده‌سازی",
   shipped: "ارسال شد",
   delivered: "تحویل شد",
@@ -96,7 +96,10 @@ const emptyTemplate = {
 export default function SmsPage() {
   return (
     <div className="flex flex-col" dir="rtl">
-      <Header title="پیامک" description="قالب‌ها، کمپین‌های تبلیغاتی و گزارش‌ها." />
+      <Header
+        title="پیامک"
+        description="قالب‌ها، کمپین‌های تبلیغاتی و گزارش‌ها."
+      />
       <div className="flex-1 p-6">
         <Tabs defaultValue="templates" dir="rtl">
           <TabsList>
@@ -120,7 +123,7 @@ export default function SmsPage() {
 }
 
 // ---------------------------------------------------------------------------
-// تب قالب‌ها
+// Templates tab
 // ---------------------------------------------------------------------------
 function TemplatesTab() {
   const { data: templates = [], isLoading } = useSmsTemplates();
@@ -168,7 +171,7 @@ function TemplatesTab() {
       setOpen(false);
       toast.success("قالب ذخیره شد");
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -188,7 +191,7 @@ function TemplatesTab() {
       setTestFor(null);
       setTestPhone("");
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -204,7 +207,8 @@ function TemplatesTab() {
         <CardHeader>
           <CardTitle>قالب‌های پیامک</CardTitle>
           <CardDescription>
-            قالب‌های تراکنشی (خرید/وضعیت) و پایه‌ی تبلیغاتی. با سوییچ فعال/غیرفعال می‌شوند.
+            قالب‌های تراکنشی (خرید/وضعیت) و پایه‌ی تبلیغاتی. با سوییچ
+            فعال/غیرفعال می‌شوند.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -285,7 +289,7 @@ function TemplatesTab() {
         </CardContent>
       </Card>
 
-      {/* دیالوگ ساخت/ویرایش قالب */}
+      {/* Create/edit template dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl">
           <DialogHeader>
@@ -305,7 +309,9 @@ function TemplatesTab() {
                 <Label>رویداد</Label>
                 <Select
                   value={form.event}
-                  onValueChange={(v) => setForm({ ...form, event: v as SmsEvent })}
+                  onValueChange={(v) =>
+                    setForm({ ...form, event: v as SmsEvent })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -350,7 +356,9 @@ function TemplatesTab() {
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
                 placeholder="سلام {name} عزیز، سفارش {orderNumber} شما ثبت شد."
               />
-              <p className="text-xs text-muted-foreground">{PLACEHOLDER_HINT}</p>
+              <p className="text-xs text-muted-foreground">
+                {PLACEHOLDER_HINT}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -361,14 +369,17 @@ function TemplatesTab() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={save} disabled={createM.isPending || updateM.isPending}>
+            <Button
+              onClick={save}
+              disabled={createM.isPending || updateM.isPending}
+            >
               ذخیره
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* دیالوگ ارسال آزمایشی */}
+      {/* Test-send dialog */}
       <Dialog open={!!testFor} onOpenChange={(o) => !o && setTestFor(null)}>
         <DialogContent dir="rtl">
           <DialogHeader>
@@ -385,7 +396,9 @@ function TemplatesTab() {
           </div>
           <DialogFooter>
             <Button onClick={sendTest} disabled={sendTestM.isPending}>
-              {sendTestM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {sendTestM.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               ارسال
             </Button>
           </DialogFooter>
@@ -396,7 +409,7 @@ function TemplatesTab() {
 }
 
 // ---------------------------------------------------------------------------
-// تب کمپین‌ها
+// Campaigns tab
 // ---------------------------------------------------------------------------
 const CAMPAIGN_STATUS_LABELS: Record<string, string> = {
   draft: "پیش‌نویس",
@@ -446,7 +459,7 @@ function CampaignsTab() {
       setOpen(false);
       reset();
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -454,9 +467,11 @@ function CampaignsTab() {
     if (!confirm("ارسال این کمپین به همه‌ی گیرنده‌ها؟")) return;
     try {
       const res = await sendM.mutateAsync(id);
-      toast.success(`ارسال شد: ${res.sentCount} موفق، ${res.failedCount} ناموفق`);
+      toast.success(
+        `ارسال شد: ${res.sentCount} موفق، ${res.failedCount} ناموفق`,
+      );
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -475,7 +490,10 @@ function CampaignsTab() {
               <Megaphone className="h-4 w-4" /> کمپین جدید
             </Button>
           </DialogTrigger>
-          <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            dir="rtl"
+            className="max-w-lg max-h-[90vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle>کمپین تبلیغاتی جدید</DialogTitle>
             </DialogHeader>
@@ -528,7 +546,9 @@ function CampaignsTab() {
                       value={filters.minSpent ?? ""}
                       onChange={(e) =>
                         setF({
-                          minSpent: e.target.value ? Number(e.target.value) : undefined,
+                          minSpent: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
                         })
                       }
                     />
@@ -540,7 +560,9 @@ function CampaignsTab() {
                       value={filters.minOrders ?? ""}
                       onChange={(e) =>
                         setF({
-                          minOrders: e.target.value ? Number(e.target.value) : undefined,
+                          minOrders: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
                         })
                       }
                     />
@@ -560,7 +582,9 @@ function CampaignsTab() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">آخرین خرید قدیمی‌تر از N روز</Label>
+                    <Label className="text-xs">
+                      آخرین خرید قدیمی‌تر از N روز
+                    </Label>
                     <Input
                       type="number"
                       value={filters.lastPurchaseOlderThanDays ?? ""}
@@ -652,9 +676,13 @@ function CampaignsTab() {
                         {CAMPAIGN_STATUS_LABELS[c.status] ?? c.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{c.totalRecipients.toLocaleString("fa-IR")}</TableCell>
+                    <TableCell>
+                      {c.totalRecipients.toLocaleString("fa-IR")}
+                    </TableCell>
                     <TableCell>{c.sentCount.toLocaleString("fa-IR")}</TableCell>
-                    <TableCell>{c.failedCount.toLocaleString("fa-IR")}</TableCell>
+                    <TableCell>
+                      {c.failedCount.toLocaleString("fa-IR")}
+                    </TableCell>
                     <TableCell className="text-left">
                       {(c.status === "draft" || c.status === "failed") && (
                         <Button
@@ -690,7 +718,7 @@ function CampaignsTab() {
 }
 
 // ---------------------------------------------------------------------------
-// تب گزارش‌ها
+// Reports tab
 // ---------------------------------------------------------------------------
 const MSG_STATUS_LABELS: Record<string, string> = {
   sent: "ارسال‌شده",
@@ -745,7 +773,9 @@ function StatsTab() {
                   <TableCell dir="ltr" className="text-right">
                     {m.phone}
                   </TableCell>
-                  <TableCell className="max-w-[240px] truncate">{m.body}</TableCell>
+                  <TableCell className="max-w-[240px] truncate">
+                    {m.body}
+                  </TableCell>
                   <TableCell>{m.type}</TableCell>
                   <TableCell>
                     <Badge

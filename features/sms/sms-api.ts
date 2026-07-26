@@ -1,16 +1,8 @@
 import axiosInstance from "@/lib/auth/axios-instance";
 import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
+import { OrderStatus } from "../order/order-api";
 
 export type SmsEvent = "purchase_paid" | "order_status" | "promotional";
-
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
 
 export interface SmsTemplate {
   id: string;
@@ -89,11 +81,10 @@ export interface CampaignPreview {
 }
 
 export const smsService = {
-  // ---- قالب‌ها ----
+  // ---- Templates ----
   async getTemplates() {
-    const res = await axiosInstance.get<ApiResponse<SmsTemplate[]>>(
-      "/sms/templates",
-    );
+    const res =
+      await axiosInstance.get<ApiResponse<SmsTemplate[]>>("/sms/templates");
     return res.data.data;
   },
 
@@ -132,20 +123,20 @@ export const smsService = {
     return res.data.data;
   },
 
-  // ---- آمار/لاگ ----
+  // ---- Stats/logs ----
   async getStats() {
     const res = await axiosInstance.get<ApiResponse<SmsStats>>("/sms/stats");
     return res.data.data;
   },
 
   async getMessages(page = 1, limit = 20) {
-    const res = await axiosInstance.get<ApiResponse<PaginatedResult<SmsMessage>>>(
-      `/sms/messages?page=${page}&limit=${limit}`,
-    );
+    const res = await axiosInstance.get<
+      ApiResponse<PaginatedResult<SmsMessage>>
+    >(`/sms/messages?page=${page}&limit=${limit}`);
     return res.data.data;
   },
 
-  // ---- کمپین‌ها ----
+  // ---- Campaigns ----
   async getCampaigns(page = 1, limit = 20) {
     const res = await axiosInstance.get<
       ApiResponse<PaginatedResult<SmsCampaign>>

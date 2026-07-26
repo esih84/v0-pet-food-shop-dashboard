@@ -36,11 +36,11 @@ import type { OrderStatus } from "@/features/order/order-api";
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
 const STATUS: Record<OrderStatus, { label: string; className: string }> = {
-  pending: {
+  awaiting_payment: {
     label: "در انتظار",
     className: "bg-amber-500/15 text-amber-600 border-amber-500/30",
   },
-  confirmed: {
+  paid: {
     label: "تأییدشده",
     className: "bg-blue-500/15 text-blue-600 border-blue-500/30",
   },
@@ -102,7 +102,7 @@ export default function CustomerDetailPage() {
           </p>
         ) : (
           <>
-            {/* اطلاعات کاربر */}
+            {/* User info */}
             <Card className="bg-card border-border">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -195,7 +195,7 @@ export default function CustomerDetailPage() {
               </CardContent>
             </Card>
 
-            {/* تاریخچه‌ی سفارش‌ها */}
+            {/* Order history */}
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle className="text-foreground">
