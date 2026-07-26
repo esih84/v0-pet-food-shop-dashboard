@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Header } from "@/components/dashboard/header";
 import {
@@ -92,14 +93,14 @@ import type {
   DiscountType,
 } from "@/lib/types/product";
 
-/** آدرس تصویر اصلی (یا اولین تصویر) محصول را برمی‌گرداند. */
+/** Returns the URL of the product's primary image (or the first image). */
 const primaryImageUrl = (images?: ProductImage[]): string | undefined => {
   if (!images?.length) return undefined;
   const primary = images.find((img) => img.isPrimary) ?? images[0];
   return primary.thumbnailUrl ?? primary.url;
 };
 
-/** ساخت اسلاگ از روی نام (فارسی/انگلیسی) برای پیشنهاد خودکار */
+/** Build a slug from the name (Persian/English) for auto-suggestion */
 const slugify = (value: string) =>
   value
     .trim()
@@ -110,7 +111,7 @@ const slugify = (value: string) =>
 
 const toman = (v: number) => `${Math.round(v).toLocaleString("fa-IR")} تومان`;
 
-/** مسطح‌کردن درخت دسته‌بندی به لیست تخت (با پیشوند نام والد) برای انتخاب چندتایی. */
+/** Flatten the category tree into a flat list (with the parent name as prefix) for multi-select. */
 type CategoryNode = { id: string; name: string; children?: CategoryNode[] };
 const flattenCategories = (
   nodes: CategoryNode[],
@@ -124,14 +125,25 @@ const flattenCategories = (
     ];
   });
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const [page, setPage] = useState(1);
   const { data: categories = [] } = useCategories();
   const { data: brands = [] } = useBrands();
 
-  // --- فیلترهای سرورساید ---
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  // --- Server-side filters ---
+  // Seed the search from the URL (?search=...) so links from other pages can
+  // land here with a pre-filled query. useSearchParams is reactive, so it also
+  // works on client-side navigation (no refresh needed).
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get("search") ?? "";
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
+
+  // Apply the URL search whenever it changes (e.g. arriving from another page).
+  useEffect(() => {
+    setSearchQuery(urlSearch);
+    setDebouncedSearch(urlSearch);
+  }, [urlSearch]);
   const [statusFilter, setStatusFilter] = useState<string>("all"); // all | active | inactive
   const [stockStatus, setStockStatus] = useState<string>("all"); // all | in_stock | out_of_stock | low_stock
   const [discountFilter, setDiscountFilter] = useState<string>("all"); // all | yes | no
@@ -147,7 +159,7 @@ export default function ProductsPage() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
 
-  // دیبونس جستجو (سرورساید)
+  // Search debounce (server-side)
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), 350);
     return () => clearTimeout(t);
@@ -177,7 +189,7 @@ export default function ProductsPage() {
     ],
   );
 
-  // با هر تغییر فیلتر به صفحه‌ی اول برگرد.
+  // On every filter change, go back to the first page.
   const filtersKey = JSON.stringify(filters);
   useEffect(() => {
     setPage(1);
@@ -215,7 +227,7 @@ export default function ProductsPage() {
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // اجازه‌ی انتخاب دوباره‌ی همان فایل
+    e.target.value = ""; // Allow re-selecting the same file
     if (!file) return;
     try {
       const res = await importMutation.mutateAsync(file);
@@ -224,14 +236,14 @@ export default function ProductsPage() {
           (res.errors.length ? `، ${res.errors.length} خطا` : ""),
       );
     } catch {
-      // خطای سراسری با توست نمایش داده می‌شود
+      // Global errors are shown via toast
     }
   };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isEditLoading, setIsEditLoading] = useState(false);
-  // وقتی کاربر slug را دستی تغییر دهد، دیگر از روی نام تولید نمی‌شود
+  // Once the user edits the slug manually, it is no longer generated from the name
   const [slugTouched, setSlugTouched] = useState(false);
 
   // Form state
@@ -247,7 +259,7 @@ export default function ProductsPage() {
     isActive: true,
     displayOrder: 0,
   });
-  // دسته‌های انتخاب‌شده (چند‌مقداری)
+  // Selected categories (multi-valued)
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const toggleCategory = (id: string) =>
     setCategoryIds((prev) =>
@@ -257,9 +269,9 @@ export default function ProductsPage() {
     { key: "", value: "" },
   ]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  // تصاویر فعلی محصول در حالت ویرایش (فقط برای نمایش)
+  // The product's current images in edit mode (display only)
   const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
-  // تخفیف‌های فعلی محصول در حالت ویرایش
+  // The product's current discounts in edit mode
   const [existingDiscounts, setExistingDiscounts] = useState<Discount[]>([]);
   const [discountForm, setDiscountForm] = useState({
     type: "percentage" as DiscountType,
@@ -293,12 +305,12 @@ export default function ProductsPage() {
 
   const openEditDialog = async (productId: string) => {
     setEditingProductId(productId);
-    setSlugTouched(true); // در حالت ویرایش، slug موجود حفظ می‌شود
+    setSlugTouched(true); // In edit mode, the existing slug is kept
     setImageFiles([]);
     setExistingImages([]);
     setIsDialogOpen(true);
-    // اطلاعات کامل محصول (شامل مشخصات) را از سرور می‌گیریم چون لیست
-    // محصولات همه‌ی فیلدها (مثل attributes) را برنمی‌گرداند.
+    // We fetch the full product details (including attributes) from the server because the
+    // products list does not return all fields (like attributes).
     setIsEditLoading(true);
     try {
       const product = await productService.getAdminProduct(productId);
@@ -333,7 +345,7 @@ export default function ProductsPage() {
     }
   };
 
-  // افزودن تخفیف به محصول در حال ویرایش
+  // Add a discount to the product being edited
   const handleAddDiscount = async () => {
     if (!editingProductId) return;
     if (!discountForm.value || !discountForm.startDate || !discountForm.endDate)
@@ -351,7 +363,7 @@ export default function ProductsPage() {
     setDiscountForm({ type: "percentage", value: "", startDate: "", endDate: "" });
   };
 
-  // حذف تخفیف محصول
+  // Remove a product discount
   const handleRemoveDiscount = async (discountId: string) => {
     if (!editingProductId) return;
     const updated = await removeDiscountMutation.mutateAsync({
@@ -392,7 +404,7 @@ export default function ProductsPage() {
     if (confirm("حذف این محصول؟")) await deleteMutation.mutateAsync(id);
   };
 
-  // حذف یکی از تصاویر فعلی محصول در حالت ویرایش
+  // Delete one of the product's current images in edit mode
   const handleDeleteImage = async (imageId: string) => {
     if (!editingProductId) return;
     if (!confirm("حذف این تصویر؟")) return;
@@ -403,14 +415,14 @@ export default function ProductsPage() {
     setExistingImages(updated.images ?? []);
   };
 
-  // جابه‌جایی یک تصویر به چپ/راست و ذخیره‌ی ترتیب جدید (اولین تصویر، تصویر اصلی)
+  // Move an image left/right and save the new order (the first image is the primary one)
   const handleMoveImage = async (index: number, direction: -1 | 1) => {
     if (!editingProductId) return;
     const target = index + direction;
     if (target < 0 || target >= existingImages.length) return;
     const reordered = [...existingImages];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    setExistingImages(reordered); // به‌روزرسانی خوش‌بینانه
+    setExistingImages(reordered); // Optimistic update
     const updated = await reorderImagesMutation.mutateAsync({
       productId: editingProductId,
       imageIds: reordered.map((img) => img.id),
@@ -478,7 +490,7 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* دسته‌بندی (چند‌انتخابی) */}
+            {/* Category (multi-select) */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -515,7 +527,7 @@ export default function ProductsPage() {
               </PopoverContent>
             </Popover>
 
-            {/* برند (چند‌انتخابی) */}
+            {/* Brand (multi-select) */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -552,7 +564,7 @@ export default function ProductsPage() {
               </PopoverContent>
             </Popover>
 
-            {/* موجودی */}
+            {/* Stock */}
             <Select value={stockStatus} onValueChange={setStockStatus}>
               <SelectTrigger className="w-[140px] bg-input">
                 <SelectValue placeholder="موجودی" />
@@ -565,7 +577,7 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
 
-            {/* تخفیف */}
+            {/* Discount */}
             <Select value={discountFilter} onValueChange={setDiscountFilter}>
               <SelectTrigger className="w-[150px] bg-input">
                 <SelectValue placeholder="تخفیف" />
@@ -577,7 +589,7 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
 
-            {/* وضعیت */}
+            {/* Status */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px] bg-input">
                 <SelectValue placeholder="وضعیت" />
@@ -984,7 +996,7 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                {/* Discounts — فقط در حالت ویرایش (محصول باید از قبل ساخته شده باشد) */}
+                {/* Discounts — only in edit mode (the product must already exist) */}
                 {editingProductId && (
                   <div className="space-y-4">
                     <h4 className="font-medium text-foreground">
@@ -1286,5 +1298,13 @@ export default function ProductsPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }

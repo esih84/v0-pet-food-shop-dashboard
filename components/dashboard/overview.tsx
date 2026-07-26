@@ -191,15 +191,16 @@ export function DashboardOverview() {
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {lowStock.map((product) => (
-                <div
+                <Link
                   key={product.id}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-3"
+                  href={`/products?search=${encodeURIComponent(product.name)}`}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-3 min-w-0 transition-colors hover:bg-secondary hover:border-amber-500/40"
                 >
-                  <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="h-12 w-12 shrink-0 rounded-lg bg-muted flex items-center justify-center">
                     <Package className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-sm font-medium text-foreground  truncate">
                       {product.name}
                     </p>
                     <Badge
@@ -210,7 +211,7 @@ export function DashboardOverview() {
                       باقی‌مانده
                     </Badge>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>
