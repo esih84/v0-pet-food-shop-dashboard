@@ -22,7 +22,7 @@ export interface ImportProductsResult {
   errors: { row: number; reason: string }[];
 }
 
-/** فیلترهای سرورساید لیست محصولات پنل ادمین. */
+/** Server-side filters for the admin product list. */
 export interface ProductAdminFilters {
   search?: string;
   categoryIds?: string[];
@@ -34,7 +34,7 @@ export interface ProductAdminFilters {
   sortOrder?: "ASC" | "DESC";
 }
 
-/** ساخت query string از فیلترها (آرایه‌ها به‌صورت CSV؛ خالی‌ها حذف می‌شوند). */
+/** Build a query string from the filters (arrays as CSV; empties are dropped). */
 function buildAdminQuery(
   page: number,
   limit: number,
@@ -60,9 +60,9 @@ function buildAdminQuery(
 }
 
 /**
- * اگر تصویری ضمیمه شده باشد بدنه را به FormData (multipart) تبدیل می‌کند تا
- * همراه تصاویر ارسال شود؛ در این حالت آرایه‌ها (attributes) به‌صورت JSON رشته‌ای
- * فرستاده می‌شوند (مطابق انتظار بک‌اند). در غیر این صورت JSON خام می‌ماند.
+ * If images are attached, converts the body to FormData (multipart) so it is
+ * sent along with the images; in that case arrays (attributes) are sent as a JSON
+ * string (as the backend expects). Otherwise it stays raw JSON.
  */
 function buildProductBody(
   input: UpdateProductInput,
@@ -94,7 +94,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // لیست همه‌ی محصولات (شامل غیرفعال) برای پنل ادمین — با فیلتر سرورساید
+  // List of all products (including inactive) for the admin panel — with server-side filtering
   async getAdminProducts(
     page = 1,
     limit = 50,
@@ -113,7 +113,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // دریافت یک محصول برای پنل ادمین (شامل غیرفعال) — برای فرم ویرایش
+  // Fetch a single product for the admin panel (including inactive) — for the edit form
   async getAdminProduct(id: string) {
     const res = await axiosInstance.get<ApiResponse<Product>>(
       `/products/admin/${id}`,
@@ -141,7 +141,7 @@ export const productService = {
     await axiosInstance.delete(`/products/${id}`);
   },
 
-  // ورود گروهی محصولات از فایل اکسل
+  // Bulk product import from an Excel file
   async importProducts(file: File) {
     const fd = new FormData();
     fd.append("file", file);
@@ -152,7 +152,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // حذف یک تصویر محصول
+  // Delete a product image
   async deleteProductImage(productId: string, imageId: string) {
     const res = await axiosInstance.delete<ApiResponse<Product>>(
       `/products/${productId}/images/${imageId}`,
@@ -160,7 +160,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // تغییر ترتیب تصاویر محصول (اولین تصویر، تصویر اصلی)
+  // Reorder product images (the first image is the primary one)
   async reorderProductImages(productId: string, imageIds: string[]) {
     const res = await axiosInstance.patch<ApiResponse<Product>>(
       `/products/${productId}/images/reorder`,
@@ -169,7 +169,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // افزودن تخفیف به محصول
+  // Add a discount to the product
   async addProductDiscount(productId: string, input: CreateDiscountInput) {
     const res = await axiosInstance.post<ApiResponse<Product>>(
       `/products/${productId}/discounts`,
@@ -178,7 +178,7 @@ export const productService = {
     return res.data.data;
   },
 
-  // حذف تخفیف محصول
+  // Remove a product discount
   async removeProductDiscount(productId: string, discountId: string) {
     const res = await axiosInstance.delete<ApiResponse<Product>>(
       `/products/${productId}/discounts/${discountId}`,

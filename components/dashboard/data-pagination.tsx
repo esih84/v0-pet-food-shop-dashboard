@@ -5,20 +5,20 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface DataPaginationProps {
-  /** صفحه‌ی فعلی (۱-based) */
+  /** Current page (1-based) */
   page: number;
-  /** تعداد کل صفحات (از پاسخ بک‌اند) */
+  /** Total number of pages (from the backend response) */
   totalPages: number;
-  /** با تغییر صفحه صدا زده می‌شود */
+  /** Called when the page changes */
   onPageChange: (page: number) => void;
-  /** تعداد کل ردیف‌ها — برای نمایش برچسب (اختیاری) */
+  /** Total number of rows — for showing the label (optional) */
   total?: number;
   className?: string;
 }
 
 /**
- * فهرست شماره‌ی صفحه‌ها با «…» برای فاصله‌ها.
- * همیشه صفحه‌ی اول/آخر و صفحه‌ی فعلی ± ۱ نمایش داده می‌شود.
+ * List of page numbers with "…" for gaps.
+ * The first/last page and the current page ± 1 are always shown.
  */
 function buildPageItems(current: number, total: number): (number | "…")[] {
   const delta = 1;
@@ -41,9 +41,9 @@ function buildPageItems(current: number, total: number): (number | "…")[] {
 const fa = (n: number) => n.toLocaleString("fa-IR");
 
 /**
- * کامپوننت صفحه‌بندی مشترک داشبورد (RTL، فارسی).
- * داده‌ها در بک‌اند صفحه‌بندی می‌شوند؛ این کامپوننت فقط شماره‌ی صفحه را عوض می‌کند.
- * اگر فقط یک صفحه وجود داشته باشد، چیزی رندر نمی‌شود.
+ * Shared dashboard pagination component (RTL, Persian).
+ * Data is paginated on the backend; this component only changes the page number.
+ * If there is only one page, nothing is rendered.
  */
 export function DataPagination({
   page,

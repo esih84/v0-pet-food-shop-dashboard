@@ -9,7 +9,7 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
-  // تا قبل از mount تم واقعی مشخص نیست؛ برای جلوگیری از mismatch در SSR
+  // Before mount the real theme is unknown; to avoid an SSR mismatch
   React.useEffect(() => setMounted(true), [])
 
   const isDark = resolvedTheme === 'dark'

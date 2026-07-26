@@ -10,17 +10,17 @@ export interface CreateCategoryInput {
   description?: string;
   parentId?: string;
   imageUrl?: string;
-  /** ترتیب نمایش (عدد کوچک‌تر = بالاتر) */
+  /** Display order (smaller number = higher) */
   order?: number;
-  /** نمایش در بخش دسته‌بندی صفحه‌ی اصلی */
+  /** Shown in the home page categories section */
   isFeatured?: boolean;
-  /** فایل تصویر — در صورت آپلود به‌جای imageUrl استفاده می‌شود (multipart) */
+  /** Image file — if uploaded, used instead of imageUrl (multipart) */
   image?: File;
 }
 
 export interface UpdateCategoryInput extends Partial<CreateCategoryInput> {}
 
-/** اگر فایلی وجود داشته باشد بدنه را به FormData (multipart) تبدیل می‌کند، وگرنه JSON می‌ماند. */
+/** If a file is present, converts the body to FormData (multipart), otherwise keeps it JSON. */
 function buildCategoryBody(
   input: UpdateCategoryInput,
 ): FormData | UpdateCategoryInput {

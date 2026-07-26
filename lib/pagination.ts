@@ -1,5 +1,5 @@
 /**
- * سایز ثابت صفحه برای همه‌ی جدول‌های داشبورد.
- * صفحه‌بندی در بک‌اند انجام می‌شود و فرانت این عدد را به‌عنوان limit می‌فرستد.
+ * Fixed page size for all dashboard tables.
+ * Pagination happens on the backend and the frontend sends this number as the limit.
  */
 export const PAGE_SIZE = 10;

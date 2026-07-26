@@ -3,10 +3,10 @@ import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 
 export type CouponType = "percentage" | "fixed" | "free_shipping";
 
-/** دامنه‌ی اعمال کوپن (مستقل از CouponType). */
+/** Coupon scope (independent of CouponType). */
 export type CouponScope = "cart" | "product" | "category";
 
-/** ارجاع سبک محصول/دسته برای نمایش دامنه در جدول. */
+/** Lightweight product/category reference for showing the scope in the table. */
 interface CouponRef {
   id: string;
   name: string;
@@ -28,7 +28,7 @@ export interface Coupon {
   endDate?: string;
   products?: CouponRef[];
   categories?: CouponRef[];
-  /** دفعات استفاده (تاریخچه‌ی خرید) — از بک‌اند ضمیمه می‌شود */
+  /** Usage count (purchase history) — attached by the backend */
   usedCount?: number;
   createdAt: string;
 }
@@ -52,7 +52,7 @@ export interface CreateCouponInput {
 
 export type UpdateCouponInput = Partial<CreateCouponInput>;
 
-/** یک ردیف تاریخچه‌ی استفاده از کوپن (خرید ثبت‌شده با کد تخفیف). */
+/** A coupon usage-history row (a purchase placed with a discount code). */
 export interface CouponUsage {
   id: string;
   couponId: string;

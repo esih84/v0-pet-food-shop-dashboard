@@ -12,7 +12,7 @@ export function useProducts(page = 1, limit = 50) {
   });
 }
 
-// محصولات پنل ادمین — شامل محصولات غیرفعال، با فیلتر سرورساید
+// Admin panel products — including inactive ones, with server-side filtering
 export function useAdminProducts(
   page = 1,
   limit = 50,

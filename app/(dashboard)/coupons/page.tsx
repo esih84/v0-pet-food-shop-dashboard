@@ -93,7 +93,7 @@ export default function CouponsPage() {
     val: (typeof emptyForm)[K],
   ) => setForm((f) => ({ ...f, [key]: val }));
 
-  // داده‌های انتخاب دامنه (دسته/کالا) — فقط وقتی نیاز است لود می‌شود
+  // Scope selection data (category/product) — loaded only when needed
   const { data: categories = [] } = useCategories();
   const { data: productsRes } = useAdminProducts(1, 100);
   const products = productsRes?.data ?? [];
@@ -106,7 +106,7 @@ export default function CouponsPage() {
         : [...f[key], id],
     }));
 
-  // تاریخچه‌ی استفاده (کلی)
+  // Usage history (overall)
   const [historyOpen, setHistoryOpen] = useState(false);
   const { data: usagesRes, isLoading: usagesLoading } = useCouponUsages(
     1,
@@ -115,7 +115,7 @@ export default function CouponsPage() {
   );
   const usages = usagesRes?.data ?? [];
 
-  // تاریخچه‌ی استفاده‌ی یک کوپن مشخص
+  // Usage history of a specific coupon
   const [historyCoupon, setHistoryCoupon] = useState<Coupon | null>(null);
 
   const needsValue = form.type !== "free_shipping";
@@ -130,7 +130,7 @@ export default function CouponsPage() {
     setForm(emptyForm);
   };
 
-  // پیش‌پُر کردن فرم از یک کوپن موجود برای ویرایش
+  // Pre-fill the form from an existing coupon for editing
   const openEdit = (c: Coupon) => {
     setEditingId(c.id);
     setForm({
@@ -610,7 +610,7 @@ export default function CouponsPage() {
   );
 }
 
-/** دیالوگ تاریخچه‌ی استفاده برای یک کوپن مشخص (کوئری فقط هنگام باز بودن اجرا می‌شود). */
+/** Usage-history dialog for a specific coupon (the query runs only while open). */
 function CouponUsageDialog({
   coupon,
   onClose,

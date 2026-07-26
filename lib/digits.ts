@@ -1,13 +1,13 @@
 /**
- * ابزار تبدیل ارقام فارسی/عربی به انگلیسی.
- * برای ورودی‌هایی مثل شماره موبایل و کد تأیید که کاربر ممکن است با کیبورد
- * فارسی تایپ کند و ارقام فارسی (۰-۹) یا عربی (٠-٩) وارد شوند.
+ * Utility for converting Persian/Arabic digits to English.
+ * For inputs like the mobile number and verification code where the user might type
+ * with a Persian keyboard and enter Persian (۰-۹) or Arabic (٠-٩) digits.
  */
 
 const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 
-/** ارقام فارسی و عربی را به ارقام انگلیسی تبدیل می‌کند (بقیه کاراکترها دست‌نخورده). */
+/** Converts Persian and Arabic digits to English digits (other characters untouched). */
 export function toEnglishDigits(value: string): string {
   if (!value) return "";
   return value.replace(/[۰-۹٠-٩]/g, (ch) => {
@@ -19,7 +19,7 @@ export function toEnglishDigits(value: string): string {
   });
 }
 
-/** ورودی را به انگلیسی تبدیل و فقط ارقام را نگه می‌دارد (حذف فاصله/خط تیره و…). */
+/** Converts the input to English and keeps only digits (strips spaces/dashes, etc.). */
 export function normalizeDigits(value: string): string {
   return toEnglishDigits(value).replace(/\D/g, "");
 }

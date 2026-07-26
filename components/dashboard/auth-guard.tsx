@@ -6,8 +6,8 @@ import { Loader2 } from "lucide-react";
 import { useCurrentAdmin } from "@/features/auth/queries";
 
 /**
- * محافظ مسیرهای داشبورد: اگر کاربر ادمین لاگین نباشد به /login می‌فرستد.
- * احراز هویت کوکی‌محور است؛ وضعیت از /users/me خوانده می‌شود.
+ * Guards dashboard routes: if the admin user is not logged in, redirects to /login.
+ * Authentication is cookie-based; the state is read from /users/me.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();

@@ -9,13 +9,13 @@ export interface CreateBrandInput {
   slug: string;
   description?: string;
   imageUrl?: string;
-  /** فایل تصویر — در صورت آپلود به‌جای imageUrl استفاده می‌شود (multipart) */
+  /** Image file — if uploaded, used instead of imageUrl (multipart) */
   image?: File;
 }
 
 export interface UpdateBrandInput extends Partial<CreateBrandInput> {}
 
-/** اگر فایلی وجود داشته باشد بدنه را به FormData (multipart) تبدیل می‌کند، وگرنه JSON می‌ماند. */
+/** If a file is present, converts the body to FormData (multipart), otherwise keeps it JSON. */
 function buildBrandBody(input: UpdateBrandInput): FormData | UpdateBrandInput {
   if (!(input.image instanceof File)) {
     const { image, ...rest } = input;

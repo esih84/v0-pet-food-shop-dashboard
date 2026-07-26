@@ -212,7 +212,7 @@ export default function BannersPage() {
                   />
                 </div>
 
-                {/* تصویر دسکتاپ — الزامی: فایل آپلود کنید یا URL بدهید */}
+                {/* Desktop image — required: upload a file or provide a URL */}
                 <div className="space-y-2 rounded-lg border border-border p-3">
                   <p className="text-sm font-medium">تصویر دسکتاپ (الزامی)</p>
                   <p className="text-xs text-muted-foreground">
@@ -243,7 +243,7 @@ export default function BannersPage() {
                   />
                 </div>
 
-                {/* تصویر موبایل — اختیاری؛ اگر خالی بماند تصویر دسکتاپ نمایش داده می‌شود */}
+                {/* Mobile image — optional; if left empty the desktop image is shown */}
                 <div className="space-y-2 rounded-lg border border-border p-3">
                   <p className="text-sm font-medium">تصویر موبایل (اختیاری)</p>
                   <p className="text-xs text-muted-foreground">

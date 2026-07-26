@@ -12,7 +12,7 @@ export function useBanners() {
   });
 }
 
-// پنل ادمین — همه‌ی بنرها با صفحه‌بندی
+// Admin panel — all banners with pagination
 export function useAdminBanners(page = 1, limit = 10) {
   return useQuery({
     queryKey: [...queryKeys.banners, "admin", page, limit],

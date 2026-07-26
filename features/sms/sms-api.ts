@@ -51,6 +51,13 @@ export interface CustomerFilter {
   minOrders?: number;
   lastPurchaseWithinDays?: number;
   lastPurchaseOlderThanDays?: number;
+  /** RFM quantile scores (1..5). Set min = max for an exact score. */
+  minR?: number;
+  maxR?: number;
+  minF?: number;
+  maxF?: number;
+  minM?: number;
+  maxM?: number;
   petType?: string;
   search?: string;
 }

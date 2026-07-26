@@ -66,7 +66,7 @@ export default function CategoriesPage() {
   const [isFeatured, setIsFeatured] = useState(false);
   const [order, setOrder] = useState<number>(0);
 
-  // جست‌وجو و فیلتر (کلاینت‌ساید — کل درخت در حافظه است).
+  // Search and filter (client-side — the whole tree is in memory).
   const [search, setSearch] = useState("");
   const [featuredFilter, setFeaturedFilter] = useState<"all" | "yes" | "no">(
     "all",

@@ -30,13 +30,13 @@ type ToolbarAction =
   | { kind: "link" };
 
 /**
- * ویرایشگر متن غنی سبک و بدون وابستگی، مخصوص مقالات بلاگ (RTL).
- * خروجی یک رشته‌ی HTML تمیز است که مستقیم در فیلد `content` بلاگ ذخیره می‌شود
- * و در فرانت داخل <article> با dangerouslySetInnerHTML رندر می‌شود.
+ * Lightweight, dependency-free rich text editor for blog articles (RTL).
+ * The output is a clean HTML string stored directly in the blog's `content` field
+ * and rendered on the frontend inside an <article> with dangerouslySetInnerHTML.
  *
- * دو حالت دارد:
- *  - «ویرایش»: نوشتن و قالب‌بندی بصری (بولد، تیتر، لیست، لینک، نقل‌قول).
- *  - «HTML»: ویرایش سورس خام؛ برای چسباندن خروجی HTML مقاله‌ی تولیدشده با اسکیل.
+ * It has two modes:
+ *  - "Edit": writing and visual formatting (bold, heading, list, link, quote).
+ *  - "HTML": raw source editing; for pasting the HTML output of an article generated with the skill.
  */
 export function RichTextEditor({
   value,
@@ -48,7 +48,7 @@ export function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"visual" | "html">("visual");
 
-  // همگام‌سازی مقدار بیرونی با DOM بدون پرش نشانگر (فقط وقتی واقعاً فرق دارد)
+  // Sync the external value with the DOM without cursor jumps (only when it actually differs)
   useEffect(() => {
     if (mode !== "visual") return;
     const el = editorRef.current;
@@ -66,7 +66,7 @@ export function RichTextEditor({
     if (action.kind === "cmd") {
       document.execCommand(action.command, false, action.arg);
     } else if (action.kind === "block") {
-      // formatBlock نیازمند نام تگ داخل <> در بعضی مرورگرهاست
+      // formatBlock requires the tag name inside <> in some browsers
       document.execCommand("formatBlock", false, `<${action.tag}>`);
     } else if (action.kind === "link") {
       const url = window.prompt("آدرس لینک را وارد کنید:", "https://");
@@ -94,7 +94,7 @@ export function RichTextEditor({
 
   return (
     <div className="rounded-md border border-input bg-background overflow-hidden">
-      {/* نوار ابزار */}
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-input bg-muted/40 p-1.5">
         {mode === "visual" &&
           tools.map((t, i) => (

@@ -13,13 +13,17 @@ export interface Customer {
   createdAt: string;
   updatedAt?: string;
 
-  // فیلدهای RFM (از /crm/customers می‌آیند)
+  // RFM fields (come from /crm/customers)
   lastPurchaseAt?: string | null;
   firstPurchaseAt?: string | null;
   totalSpent?: number;
   orderCount?: number;
   lastOrderAmount?: number | null;
   rfmSegment?: string | null;
+  /** RFM quantile scores (1..5); null until the batch recomputation has scored the customer. */
+  rfmR?: number | null;
+  rfmF?: number | null;
+  rfmM?: number | null;
   smsOptOut?: boolean;
 }
 

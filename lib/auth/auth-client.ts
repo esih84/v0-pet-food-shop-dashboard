@@ -1,12 +1,12 @@
 import axiosInstance from "./axios-instance";
 
 /**
- * Auth Client — ورود ادمین با OTP موبایل (مطابق بک‌اند).
- * احراز هویت کوکی‌محور (httpOnly) است؛ بنابراین withCredentials روشن است
- * و توکنی در سمت کلاینت ذخیره نمی‌شود.
+ * Auth Client — admin login via mobile OTP (matching the backend).
+ * Authentication is cookie-based (httpOnly), so withCredentials is enabled
+ * and no token is stored on the client.
  *
- * از همان axiosInstance مشترک استفاده می‌کنیم تا درخواست‌هایی مثل me()
- * روی خطای 401 به‌طور خودکار refresh شوند و ادمین بی‌دلیل بیرون نیفتد.
+ * We use the same shared axiosInstance so that requests like me()
+ * are refreshed automatically on a 401 error and the admin is not logged out for no reason.
  */
 
 export interface AdminUser {
@@ -23,32 +23,32 @@ export interface VerifyOtpResponse {
 }
 
 export const authClient = {
-  /** ارسال کد یک‌بارمصرف به شماره‌ی موبایل */
+  /** Send a one-time code to the mobile number */
   sendOtp: async (phone: string): Promise<void> => {
     await axiosInstance.post("/auth/send-otp", { phone });
   },
 
-  /** تأیید کد و ست‌شدن کوکی‌های احراز هویت توسط بک‌اند */
+  /** Verify the code; the backend sets the authentication cookies */
   verifyOtp: async (phone: string, code: string): Promise<VerifyOtpResponse> => {
     const res = await axiosInstance.post("/auth/verify-otp", { phone, code });
     return res.data.data as VerifyOtpResponse;
   },
 
-  /** تمدید کوکی‌ها با کوکی refresh */
+  /** Renew the cookies using the refresh cookie */
   refresh: async (): Promise<void> => {
     await axiosInstance.post("/auth/refresh");
   },
 
-  /** خروج و پاک‌کردن کوکی‌ها */
+  /** Log out and clear the cookies */
   logout: async (): Promise<void> => {
     try {
       await axiosInstance.post("/auth/logout");
     } catch {
-      // خطای logout را نادیده می‌گیریم
+      // We ignore logout errors
     }
   },
 
-  /** کاربر فعلی */
+  /** Current user */
   me: async (): Promise<AdminUser> => {
     const res = await axiosInstance.get("/users/me");
     return res.data.data as AdminUser;

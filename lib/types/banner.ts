@@ -1,6 +1,6 @@
 /**
- * جایگاه‌های مجاز بنر — باید با رجیستری بک‌اند
- * (shop-backend/src/modules/banners/banner-position.ts) همگام بماند.
+ * Allowed banner positions — must stay in sync with the backend registry
+ * (shop-backend/src/modules/banners/banner-position.ts).
  */
 export const BANNER_POSITION_OPTIONS = [
   { value: "home_main", label: "اسلایدر اصلی صفحه‌ی خانه" },
@@ -24,9 +24,9 @@ export type Banner = {
   imageUrl: string;
   mobileImageUrl?: string;
   link?: string;
-  /** متن دکمه‌ی روی بنر؛ خالی باشد دکمه نمایش داده نمی‌شود */
+  /** Button text on the banner; if empty, the button is not shown */
   buttonText?: string;
-  // string می‌ماند تا داده‌های قدیمی با جایگاه‌های حذف‌شده هم قابل نمایش باشند
+  // Kept as string so old data with removed positions is still displayable
   position: string;
   order: number;
   isActive: boolean;

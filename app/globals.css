@@ -133,7 +133,7 @@
   }
 }
 
-/* پنهان‌کردن نوار اسکرول (برای منوی داشبورد) — بدون از دست‌رفتن قابلیت اسکرول */
+/* Hide the scrollbar (for the dashboard menu) — without losing scroll capability */
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

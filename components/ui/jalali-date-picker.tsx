@@ -8,9 +8,9 @@ import gregorian_en from 'react-date-object/locales/gregorian_en'
 import { cn } from '@/lib/utils'
 
 interface JalaliDatePickerProps {
-  /** مقدار میلادی به‌صورت YYYY-MM-DD (همان چیزی که به بک‌اند می‌رود). */
+  /** Gregorian value as YYYY-MM-DD (the same thing sent to the backend). */
   value?: string
-  /** مقدار میلادی جدید (YYYY-MM-DD) یا رشته‌ی خالی هنگام پاک‌کردن. */
+  /** New Gregorian value (YYYY-MM-DD) or an empty string when cleared. */
   onChange: (value: string) => void
   placeholder?: string
   className?: string
@@ -21,8 +21,8 @@ const inputClass =
   'placeholder:text-muted-foreground border-input dark:bg-input/30 h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
 
 /**
- * انتخابگر تاریخ شمسی (جلالی). به کاربر تاریخ فارسی نشان می‌دهد ولی مقدار میلادی
- * (YYYY-MM-DD) به بیرون می‌دهد تا بک‌اند بدون تغییر همان تاریخ میلادی را ذخیره کند.
+ * Jalali (Persian) date picker. Shows the user a Persian date but outputs a Gregorian
+ * value (YYYY-MM-DD) so the backend stores the Gregorian date unchanged.
  */
 export function JalaliDatePicker({
   value,
@@ -31,7 +31,7 @@ export function JalaliDatePicker({
   className,
   disabled,
 }: JalaliDatePickerProps) {
-  // مقدار میلادی ورودی → DateObject شمسی برای نمایش
+  // Input Gregorian value → Jalali DateObject for display
   const displayValue = value
     ? new DateObject({
         date: value,
@@ -55,7 +55,7 @@ export function JalaliDatePicker({
           onChange('')
           return
         }
-        // DateObject شمسی → میلادی YYYY-MM-DD (بدون شیفت تایم‌زون)
+        // Jalali DateObject → Gregorian YYYY-MM-DD (without timezone shift)
         const g = new DateObject(d).convert(gregorian, gregorian_en)
         onChange(g.format('YYYY-MM-DD'))
       }}

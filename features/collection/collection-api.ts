@@ -20,7 +20,7 @@ export const collectionService = {
     return res.data.data;
   },
 
-  // پنل ادمین — همه‌ی کالکشن‌ها (شامل غیرفعال) با صفحه‌بندی
+  // Admin panel — all collections (including inactive) with pagination
   async getAdminCollections(page = 1, limit = 10) {
     const res = await axiosInstance.get<
       ApiResponse<PaginatedResult<Collection>>

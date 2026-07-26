@@ -8,22 +8,22 @@ export interface CreateBannerInput {
   imageUrl?: string;
   mobileImageUrl?: string;
   link?: string;
-  /** متن دکمه‌ی روی بنر؛ خالی باشد دکمه نمایش داده نمی‌شود */
+  /** Button text on the banner; if empty, the button is not shown */
   buttonText?: string;
   position?: string;
   order?: number;
   isActive?: boolean;
   startDate?: Date | string;
   endDate?: Date | string;
-  /** فایل تصویر دسکتاپ — در صورت آپلود، به‌جای imageUrl استفاده می‌شود */
+  /** Desktop image file — if uploaded, used instead of imageUrl */
   image?: File;
-  /** فایل تصویر موبایل */
+  /** Mobile image file */
   mobileImage?: File;
 }
 
 export interface UpdateBannerInput extends Partial<CreateBannerInput> {}
 
-/** اگر فایلی وجود داشته باشد بدنه را به FormData (multipart) تبدیل می‌کند، وگرنه JSON می‌ماند. */
+/** If a file is present, converts the body to FormData (multipart), otherwise keeps it JSON. */
 function buildBannerBody(input: UpdateBannerInput): FormData | UpdateBannerInput {
   const hasFile = input.image instanceof File || input.mobileImage instanceof File;
   if (!hasFile) {
@@ -47,7 +47,7 @@ export const bannerService = {
     return data.data;
   },
 
-  // پنل ادمین — همه‌ی بنرها (شامل غیرفعال) با صفحه‌بندی
+  // Admin panel — all banners (including inactive) with pagination
   async getAdminBanners(page = 1, limit = 10) {
     const { data } = await axiosInstance.get<
       ApiResponse<PaginatedResult<Banner>>

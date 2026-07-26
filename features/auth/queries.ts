@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { authClient, type AdminUser } from "@/lib/auth/auth-client";
 import { CURRENT_ADMIN_KEY } from "@/features/query-keys";
 
-/** کاربر فعلی (از روی کوکی). اگر لاگین نباشد null. */
+/** Current user (from the cookie). null if not logged in. */
 export function useCurrentAdmin() {
   return useQuery<AdminUser | null>({
     queryKey: CURRENT_ADMIN_KEY,

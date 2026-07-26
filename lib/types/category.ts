@@ -6,7 +6,7 @@ export type Category = {
   description?: string;
   order: number;
   isActive: boolean;
-  /** نمایش در بخش دسته‌بندی صفحه‌ی اصلی */
+  /** Shown in the home page categories section */
   isFeatured?: boolean;
 
   parentId?: string;

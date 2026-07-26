@@ -1,21 +1,25 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosInstance,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 
 /**
- * نمونه‌ی axios با احراز هویت کوکی‌محور (httpOnly).
- * هیچ توکنی در سمت کلاینت ذخیره نمی‌شود؛ مرورگر کوکی‌ها را خودکار می‌فرستد.
- * روی 401 یک‌بار refresh تلاش می‌شود و سپس درخواست تکرار می‌گردد.
+ * An axios instance with cookie-based authentication (httpOnly).
+ * No token is stored on the client; the browser sends the cookies automatically.
+ * On a 401, a refresh is attempted once and then the request is retried.
  */
 
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  //  || "http://localhost:3000/api/v1",
   timeout: 30000,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
-// برای آپلود فایل (FormData) نباید Content-Type دستی ست شود؛ در غیر این صورت
-// مرورگر boundary را اضافه نمی‌کند و سرور (multer) نمی‌تواند فایل‌ها را پارس کند.
+// For file uploads (FormData), Content-Type must not be set manually; otherwise
+// the browser does not add the boundary and the server (multer) cannot parse the files.
 axiosInstance.interceptors.request.use((config) => {
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
     delete config.headers["Content-Type"];

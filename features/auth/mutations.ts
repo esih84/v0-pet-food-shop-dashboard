@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
 import { CURRENT_ADMIN_KEY } from "@/features/query-keys";
 
-/** useAuth — احراز هویت ادمین با OTP موبایل (کوکی‌محور). */
+/** useAuth — admin authentication via mobile OTP (cookie-based). */
 export const useAuth = () => {
   const router = useRouter();
   const qc = useQueryClient();
@@ -18,7 +18,7 @@ export const useAuth = () => {
     mutationFn: ({ phone, code }: { phone: string; code: string }) =>
       authClient.verifyOtp(phone, code),
     onSuccess: async (data) => {
-      // فقط ادمین اجازه‌ی ورود به داشبورد دارد
+      // Only an admin is allowed to log into the dashboard
       if (data.user.role !== "admin") {
         await authClient.logout();
         throw new Error("شما دسترسی ادمین ندارید.");

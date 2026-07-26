@@ -12,7 +12,7 @@ export function useCollections() {
   });
 }
 
-// پنل ادمین — همه‌ی کالکشن‌ها با صفحه‌بندی
+// Admin panel — all collections with pagination
 export function useAdminCollections(page = 1, limit = 10) {
   return useQuery({
     queryKey: [...queryKeys.collections, "admin", page, limit],

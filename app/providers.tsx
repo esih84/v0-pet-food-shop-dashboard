@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 
-/** پیام خطای خوانا را از پاسخ بک‌اند/axios استخراج می‌کند. */
+/** Extracts a readable error message from the backend/axios response. */
 function getErrorMessage(error: unknown): string {
   if (error instanceof AxiosError) {
     const data = error.response?.data as
@@ -29,7 +29,7 @@ function getErrorMessage(error: unknown): string {
   return 'خطای ناشناخته رخ داد.'
 }
 
-/** آیا این خطا باید نادیده گرفته شود؟ (401 توسط interceptor مدیریت می‌شود) */
+/** Should this error be ignored? (401 is handled by the interceptor) */
 function shouldSkip(error: unknown): boolean {
   return error instanceof AxiosError && error.response?.status === 401
 }
@@ -45,7 +45,7 @@ export function Providers({ children }: { children: ReactNode }) {
             retry: 1,
           },
         },
-        // نمایش خودکار توست خطا برای هر درخواست ناموفق (خواندن و نوشتن)
+        // Automatically show an error toast for every failed request (reads and writes)
         queryCache: new QueryCache({
           onError: (error) => {
             if (shouldSkip(error)) return

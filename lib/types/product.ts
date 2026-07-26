@@ -42,12 +42,12 @@ export type Product = {
   stock: number;
   sku?: string;
   isActive: boolean;
-  /** ترتیب نمایش دستی (عدد بزرگ‌تر = بالاتر) */
+  /** Manual display order (larger number = higher) */
   displayOrder?: number;
 
   categoryId?: string;
   category?: Category | null;
-  /** دسته‌های محصول (چند‌مقداری) */
+  /** Product categories (multi-valued) */
   categories?: Category[];
 
   brandId?: string;
@@ -69,14 +69,14 @@ export interface CreateProductInput {
   stock: number;
   sku?: string;
   categoryId?: string;
-  /** دسته‌های محصول (چند‌مقداری) */
+  /** Product categories (multi-valued) */
   categoryIds?: string[];
   brandId?: string;
   isActive?: boolean;
-  /** ترتیب نمایش دستی (عدد بزرگ‌تر = بالاتر) */
+  /** Manual display order (larger number = higher) */
   displayOrder?: number;
   attributes?: ProductAttribute[];
-  /** تصاویر محصول — هنگام ساخت/ویرایش آپلود می‌شوند (اولین تصویر، تصویر اصلی) */
+  /** Product images — uploaded on create/edit (the first image is the primary one) */
   images?: File[];
 }
 
