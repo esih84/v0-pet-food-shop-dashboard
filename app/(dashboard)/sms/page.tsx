@@ -388,14 +388,15 @@ function TemplatesTab() {
                 <p className="text-sm font-medium">نگاشت توکن‌ها</p>
                 <p className="text-xs text-muted-foreground">
                   مقدار هر توکنِ قالب کاوه‌نگار را مشخص کنید. نام توکن‌ها را در متن
-                  قالب کاوه‌نگار به‌صورت %token%، %token10% و… بگذارید.
+                  قالب کاوه‌نگار دقیقاً با همین نام و یک ٪ قبل از آن بگذارید
+                  (مثل %token و %token10). نامِ توکن در پنل باید با اسلاتِ همین‌جا یکی باشد.
                 </p>
               </div>
               {TOKEN_SLOTS.map(({ slot, allowSpaces }) => (
                 <div key={slot} className="flex items-center gap-2">
                   <div className="w-24 shrink-0">
                     <span className="font-mono text-sm" dir="ltr">
-                      %{slot}%
+                      %{slot}
                     </span>
                     <span
                       className={`block text-[10px] ${allowSpaces ? "text-muted-foreground" : "text-amber-600"}`}
