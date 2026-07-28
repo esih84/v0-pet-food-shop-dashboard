@@ -60,8 +60,15 @@ import type {
   SmsTemplate,
   SmsEvent,
   CustomerFilter,
+  TokenField,
+  TokenSlot,
+  TokenMap,
 } from "@/features/sms/sms-api";
-import { SEGMENT_LABELS, SEGMENT_ORDER } from "@/features/crm/crm-api";
+import { useSegments } from "@/features/crm/queries";
+import {
+  RfmScoreFilter,
+  type RfmScoreRange,
+} from "@/components/dashboard/rfm-score-filter";
 import { OrderStatus } from "@/features/order/order-api";
 
 const EVENT_LABELS: Record<SmsEvent, string> = {
@@ -81,16 +88,38 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
-const PLACEHOLDER_HINT =
-  "{name} نام کاربر • {pet} نام پت • {orderNumber} شماره سفارش • {status} وضعیت • {amount} مبلغ";
+
+// Transactional events go through Kavenegar Lookup (no dedicated line needed) and
+// carry a token map instead of a free-text body.
+const TEMPLATE_EVENTS: SmsEvent[] = ["order_status", "purchase_paid"];
+
+const FIELD_LABELS: Record<TokenField, string> = {
+  firstName: "نام",
+  fullName: "نام و نام خانوادگی",
+  petName: "نام پت",
+  orderNumber: "شماره سفارش",
+  amount: "مبلغ",
+  statusLabel: "وضعیت سفارش",
+};
+const TOKEN_FIELDS = Object.keys(FIELD_LABELS) as TokenField[];
+
+// token/token2/token3 reject spaces; token10/token20 allow them — map fields
+// with spaces (نام کامل، نام پت، وضعیت) onto the latter.
+const TOKEN_SLOTS: { slot: TokenSlot; allowSpaces: boolean }[] = [
+  { slot: "token", allowSpaces: false },
+  { slot: "token2", allowSpaces: false },
+  { slot: "token3", allowSpaces: false },
+  { slot: "token10", allowSpaces: true },
+  { slot: "token20", allowSpaces: true },
+];
+const NONE = "none";
 
 const emptyTemplate = {
   id: "",
-  name: "",
-  body: "",
-  event: "promotional" as SmsEvent,
+  event: "order_status" as SmsEvent,
   orderStatus: undefined as OrderStatus | undefined,
   isActive: true,
+  tokenMap: {} as TokenMap,
 };
 
 export default function SmsPage() {
@@ -144,26 +173,32 @@ function TemplatesTab() {
   const openEdit = (t: SmsTemplate) => {
     setForm({
       id: t.id,
-      name: t.name,
-      body: t.body,
       event: t.event,
       orderStatus: t.orderStatus ?? undefined,
       isActive: t.isActive,
+      tokenMap: t.tokenMap ?? {},
     });
     setOpen(true);
   };
 
+  const setSlot = (slot: TokenSlot, value: string) =>
+    setForm((f) => {
+      const tokenMap = { ...f.tokenMap };
+      if (value === NONE) delete tokenMap[slot];
+      else tokenMap[slot] = value as TokenField;
+      return { ...f, tokenMap };
+    });
+
   const save = async () => {
-    if (!form.name || !form.body) {
-      toast.error("نام و متن قالب الزامی است");
+    if (form.event === "order_status" && !form.orderStatus) {
+      toast.error("انتخاب وضعیت سفارش الزامی است");
       return;
     }
     const payload = {
-      name: form.name,
-      body: form.body,
       event: form.event,
       orderStatus: form.event === "order_status" ? form.orderStatus : undefined,
       isActive: form.isActive,
+      tokenMap: form.tokenMap,
     };
     try {
       if (form.id) await updateM.mutateAsync({ id: form.id, data: payload });
@@ -220,9 +255,9 @@ function TemplatesTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right">نام</TableHead>
                   <TableHead className="text-right">رویداد</TableHead>
                   <TableHead className="text-right">وضعیت سفارش</TableHead>
+                  <TableHead className="text-right">توکن‌ها</TableHead>
                   <TableHead className="text-right">فعال</TableHead>
                   <TableHead className="text-left">عملیات</TableHead>
                 </TableRow>
@@ -230,12 +265,19 @@ function TemplatesTab() {
               <TableBody>
                 {templates.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{EVENT_LABELS[t.event]}</Badge>
                     </TableCell>
                     <TableCell>
                       {t.orderStatus ? ORDER_STATUS_LABELS[t.orderStatus] : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {TOKEN_SLOTS.filter(({ slot }) => t.tokenMap?.[slot])
+                        .map(
+                          ({ slot }) =>
+                            `${slot}=${FIELD_LABELS[t.tokenMap![slot]!]}`,
+                        )
+                        .join("، ") || "—"}
                     </TableCell>
                     <TableCell>
                       <Switch
@@ -296,14 +338,6 @@ function TemplatesTab() {
             <DialogTitle>{form.id ? "ویرایش قالب" : "قالب جدید"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>نام قالب</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="مثلاً تأیید خرید"
-              />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>رویداد</Label>
@@ -317,7 +351,7 @@ function TemplatesTab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(EVENT_LABELS) as SmsEvent[]).map((e) => (
+                    {TEMPLATE_EVENTS.map((e) => (
                       <SelectItem key={e} value={e}>
                         {EVENT_LABELS[e]}
                       </SelectItem>
@@ -348,18 +382,47 @@ function TemplatesTab() {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label>متن پیامک</Label>
-              <Textarea
-                rows={4}
-                value={form.body}
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-                placeholder="سلام {name} عزیز، سفارش {orderNumber} شما ثبت شد."
-              />
-              <p className="text-xs text-muted-foreground">
-                {PLACEHOLDER_HINT}
-              </p>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">نگاشت توکن‌ها</p>
+                <p className="text-xs text-muted-foreground">
+                  مقدار هر توکنِ قالب کاوه‌نگار را مشخص کنید. نام توکن‌ها را در متن
+                  قالب کاوه‌نگار به‌صورت %token%، %token10% و… بگذارید.
+                </p>
+              </div>
+              {TOKEN_SLOTS.map(({ slot, allowSpaces }) => (
+                <div key={slot} className="flex items-center gap-2">
+                  <div className="w-24 shrink-0">
+                    <span className="font-mono text-sm" dir="ltr">
+                      %{slot}%
+                    </span>
+                    <span
+                      className={`block text-[10px] ${allowSpaces ? "text-muted-foreground" : "text-amber-600"}`}
+                    >
+                      {allowSpaces ? "فاصله مجاز" : "بدون فاصله"}
+                    </span>
+                  </div>
+                  <Select
+                    value={form.tokenMap[slot] ?? NONE}
+                    onValueChange={(v) => setSlot(slot, v)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>— هیچ —</SelectItem>
+                      {TOKEN_FIELDS.map((field) => (
+                        <SelectItem key={field} value={field}>
+                          {FIELD_LABELS[field]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
             </div>
+
             <div className="flex items-center gap-2">
               <Switch
                 checked={form.isActive}
@@ -431,8 +494,22 @@ function CampaignsTab() {
   const [filters, setFilters] = useState<CustomerFilter>({});
   const [previewCount, setPreviewCount] = useState<number | null>(null);
 
+  const { data: segments } = useSegments();
+
   const setF = (patch: Partial<CustomerFilter>) => {
     setFilters((f) => ({ ...f, ...patch }));
+    setPreviewCount(null);
+  };
+
+  /**
+   * The score filter owns all six bounds at once, so its result replaces them wholesale
+   * rather than being merged — merging would leave a cleared bound behind.
+   */
+  const setScores = (scores: RfmScoreRange) => {
+    setFilters((f) => {
+      const { minR, maxR, minF, maxF, minM, maxM, ...rest } = f;
+      return { ...rest, ...scores };
+    });
     setPreviewCount(null);
   };
 
@@ -518,25 +595,38 @@ function CampaignsTab() {
               <div className="rounded-md border p-3 space-y-3">
                 <p className="text-sm font-medium">هدف‌گیری گیرنده‌ها</p>
                 <div className="space-y-2">
-                  <Label className="text-xs">سگمنت</Label>
-                  <Select
-                    value={filters.segment ?? "all"}
-                    onValueChange={(v) =>
-                      setF({ segment: v === "all" ? undefined : v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">همه</SelectItem>
-                      {SEGMENT_ORDER.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {SEGMENT_LABELS[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs">سطح مشتری</Label>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={filters.segment ?? "all"}
+                      onValueChange={(v) =>
+                        setF({ segment: v === "all" ? undefined : v })
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">همه</SelectItem>
+                        {(segments ?? []).map((s) => (
+                          <SelectItem key={s.key} value={s.key}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <RfmScoreFilter
+                      value={{
+                        minR: filters.minR,
+                        maxR: filters.maxR,
+                        minF: filters.minF,
+                        maxF: filters.maxF,
+                        minM: filters.minM,
+                        maxM: filters.maxM,
+                      }}
+                      onChange={setScores}
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">

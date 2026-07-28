@@ -4,23 +4,38 @@ import { OrderStatus } from "../order/order-api";
 
 export type SmsEvent = "purchase_paid" | "order_status" | "promotional";
 
+/** Order/user field that can feed a Kavenegar Lookup token slot. */
+export type TokenField =
+  | "firstName"
+  | "fullName"
+  | "petName"
+  | "orderNumber"
+  | "amount"
+  | "statusLabel";
+
+export type TokenSlot = "token" | "token2" | "token3" | "token10" | "token20";
+
+export type TokenMap = Partial<Record<TokenSlot, TokenField>>;
+
 export interface SmsTemplate {
   id: string;
-  name: string;
-  body: string;
+  name?: string | null;
+  body?: string | null;
   event: SmsEvent;
   orderStatus?: OrderStatus | null;
   isActive: boolean;
+  tokenMap?: TokenMap | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateSmsTemplateInput {
-  name: string;
-  body: string;
+  name?: string;
+  body?: string;
   event: SmsEvent;
   orderStatus?: OrderStatus;
   isActive?: boolean;
+  tokenMap?: TokenMap;
 }
 
 export type UpdateSmsTemplateInput = Partial<CreateSmsTemplateInput>;
