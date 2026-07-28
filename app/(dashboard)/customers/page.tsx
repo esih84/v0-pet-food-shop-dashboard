@@ -30,24 +30,93 @@ import Link from "next/link";
 import { Search, Loader2, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useCrmCustomers, useSegments } from "@/features/crm/queries";
+import {
+  useCrmCustomers,
+  useSegments,
+  useSegmentCounts,
+} from "@/features/crm/queries";
 import { useRecomputeRfm } from "@/features/crm/mutations";
-import { SEGMENT_LABELS, SEGMENT_ORDER } from "@/features/crm/crm-api";
+import {
+  UNCLASSIFIED_SEGMENT,
+  findSegment,
+  segmentClasses,
+} from "@/features/crm/segment-display";
+import type { RfmSegment } from "@/features/crm/crm-api";
 import { DataPagination } from "@/components/dashboard/data-pagination";
+import {
+  RfmScoreFilter,
+  type RfmScoreRange,
+} from "@/components/dashboard/rfm-score-filter";
 import { PAGE_SIZE } from "@/lib/pagination";
 
 const toman = (v?: number | null) =>
   v ? `${Math.round(Number(v)).toLocaleString("fa-IR")} تومان` : "—";
 
-const segmentBadgeClass: Record<string, string> = {
-  champion: "bg-primary/15 text-primary border-primary/30",
-  loyal: "bg-blue-500/15 text-blue-600 border-blue-500/30",
-  active: "bg-green-500/15 text-green-600 border-green-500/30",
-  new: "bg-cyan-500/15 text-cyan-600 border-cyan-500/30",
-  at_risk: "bg-amber-500/15 text-amber-600 border-amber-500/30",
-  lost: "bg-red-500/15 text-red-600 border-red-500/30",
-  prospect: "",
-};
+/** Tint a score so a row of digits can be scanned at a glance: 5 is best, 1 is worst. */
+const scoreClass = (v?: number | null) =>
+  v == null
+    ? "text-muted-foreground"
+    : v >= 4
+      ? "text-green-600"
+      : v === 3
+        ? "text-foreground"
+        : "text-amber-600";
+
+function RfmScoreCell({
+  r,
+  f,
+  m,
+}: {
+  r?: number | null;
+  f?: number | null;
+  m?: number | null;
+}) {
+  if (r == null && f == null && m == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="font-mono text-sm" dir="ltr">
+      {[r, f, m].map((v, i) => (
+        <span key={i}>
+          {i > 0 && <span className="text-muted-foreground"> / </span>}
+          <span className={scoreClass(v)}>
+            {v == null ? "—" : v.toLocaleString("fa-IR")}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Label and colour come from the segment definitions, so a renamed or recoloured segment
+ * follows here without a code change. An unknown key (a segment deleted since the last
+ * recomputation) still renders — as the raw key, which is more useful than a blank cell.
+ */
+function SegmentBadge({
+  segmentKey,
+  segments,
+}: {
+  segmentKey?: string | null;
+  segments?: RfmSegment[];
+}) {
+  if (!segmentKey) {
+    return (
+      <Badge
+        variant="outline"
+        className={segmentClasses(UNCLASSIFIED_SEGMENT.color).badge}
+      >
+        {UNCLASSIFIED_SEGMENT.label}
+      </Badge>
+    );
+  }
+  const segment = findSegment(segments, segmentKey);
+  return (
+    <Badge variant="outline" className={segmentClasses(segment?.color).badge}>
+      {segment?.label ?? segmentKey}
+    </Badge>
+  );
+}
 
 function daysSince(date?: string | null): string {
   if (!date) return "—";
@@ -60,18 +129,34 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [segment, setSegment] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const [scores, setScores] = useState<RfmScoreRange>({});
 
   const filter = {
     page,
     limit: PAGE_SIZE,
     segment: segment === "all" ? undefined : segment,
     search: query || undefined,
+    ...scores,
   };
   const { data: response, isLoading } = useCrmCustomers(filter);
   const { data: segments } = useSegments();
+  const { data: counts } = useSegmentCounts();
   const recompute = useRecomputeRfm();
 
   const customers = response?.data ?? [];
+
+  // Defined segments plus the unclassified bucket, which is not a row but still worth
+  // filtering by — it is how an operator finds the customers their rules missed.
+  const chips = [
+    ...(segments ?? []).map((s) => ({
+      key: s.key,
+      label: s.label,
+      color: s.color,
+    })),
+    ...((counts?.[UNCLASSIFIED_SEGMENT.key] ?? 0) > 0
+      ? [UNCLASSIFIED_SEGMENT]
+      : []),
+  ];
 
   const handleRecompute = async () => {
     try {
@@ -80,7 +165,7 @@ export default function CustomersPage() {
         `بازمحاسبه انجام شد (${res.updated.toLocaleString("fa-IR")} مشتری).`,
       );
     } catch {
-      /* toast سراسری */
+      /* Global toast */
     }
   };
 
@@ -91,23 +176,23 @@ export default function CustomersPage() {
         description="فهرست مشتریان با تحلیل RFM و سگمنت‌بندی."
       />
       <div className="flex-1 p-6 space-y-6">
-        {/* نوار سگمنت‌ها */}
-        {segments && (
+        {/* Segments bar */}
+        {chips.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {SEGMENT_ORDER.map((s) => (
+            {chips.map((s) => (
               <button
-                key={s}
+                key={s.key}
                 onClick={() => {
-                  setSegment((prev) => (prev === s ? "all" : s));
+                  setSegment((prev) => (prev === s.key ? "all" : s.key));
                   setPage(1);
                 }}
                 className={`rounded-full border px-3 py-1 text-xs transition ${
-                  segment === s
-                    ? "ring-2 ring-primary/40 " + (segmentBadgeClass[s] || "")
-                    : segmentBadgeClass[s] || "bg-muted"
+                  segment === s.key
+                    ? "ring-2 ring-primary/40 " + segmentClasses(s.color).badge
+                    : segmentClasses(s.color).badge
                 }`}
               >
-                {SEGMENT_LABELS[s]}: {(segments[s] ?? 0).toLocaleString("fa-IR")}
+                {s.label}: {(counts?.[s.key] ?? 0).toLocaleString("fa-IR")}
               </button>
             ))}
           </div>
@@ -138,14 +223,21 @@ export default function CustomersPage() {
                 <SelectValue placeholder="سگمنت" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه‌ی سگمنت‌ها</SelectItem>
-                {SEGMENT_ORDER.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {SEGMENT_LABELS[s]}
+                <SelectItem value="all">همه‌ی سطوح</SelectItem>
+                {chips.map((s) => (
+                  <SelectItem key={s.key} value={s.key}>
+                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <RfmScoreFilter
+              value={scores}
+              onChange={(next) => {
+                setScores(next);
+                setPage(1);
+              }}
+            />
           </div>
           <Button
             variant="outline"
@@ -181,6 +273,12 @@ export default function CustomersPage() {
                     <TableHead className="text-muted-foreground text-right">نام</TableHead>
                     <TableHead className="text-muted-foreground text-right">موبایل</TableHead>
                     <TableHead className="text-muted-foreground text-right">سگمنت</TableHead>
+                    <TableHead
+                      className="text-muted-foreground text-right"
+                      title="امتیاز تازگی / تعداد / مبلغ خرید — هر کدام ۱ تا ۵"
+                    >
+                      R / F / M
+                    </TableHead>
                     <TableHead className="text-muted-foreground text-right">تعداد سفارش</TableHead>
                     <TableHead className="text-muted-foreground text-right">مبلغ کل</TableHead>
                     <TableHead className="text-muted-foreground text-right">آخرین خرید</TableHead>
@@ -195,16 +293,13 @@ export default function CustomersPage() {
                       </TableCell>
                       <TableCell className="text-foreground">{c.phone}</TableCell>
                       <TableCell>
-                        {c.rfmSegment ? (
-                          <Badge
-                            variant="outline"
-                            className={segmentBadgeClass[c.rfmSegment] || ""}
-                          >
-                            {SEGMENT_LABELS[c.rfmSegment] ?? c.rfmSegment}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <SegmentBadge
+                          segmentKey={c.rfmSegment}
+                          segments={segments}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <RfmScoreCell r={c.rfmR} f={c.rfmF} m={c.rfmM} />
                       </TableCell>
                       <TableCell className="text-foreground">
                         {(c.orderCount ?? 0).toLocaleString("fa-IR")}

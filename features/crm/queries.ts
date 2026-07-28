@@ -15,18 +15,20 @@ export function useCrmCustomers(
   });
 }
 
+/** Segment definitions — labels, colours and ordering for the whole dashboard. */
 export function useSegments() {
   return useQuery({
     queryKey: queryKeys.crmSegments,
     queryFn: crmService.getSegments,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
-export function useRfmSettings() {
+/** Customer count per segment key, plus `unclassified`. */
+export function useSegmentCounts() {
   return useQuery({
-    queryKey: queryKeys.crmRfmSettings,
-    queryFn: crmService.getRfmSettings,
-    staleTime: 5 * 60 * 1000,
+    queryKey: queryKeys.crmSegmentCounts,
+    queryFn: crmService.getSegmentCounts,
+    staleTime: 60 * 1000,
   });
 }

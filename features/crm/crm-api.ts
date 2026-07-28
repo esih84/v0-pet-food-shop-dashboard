@@ -3,43 +3,53 @@ import type { ApiResponse, PaginatedResult } from "@/lib/types/api";
 import type { Customer } from "@/features/customer/customer-api";
 import type { CustomerFilter } from "@/features/sms/sms-api";
 
-/** Persian labels of the segments. */
-export const SEGMENT_LABELS: Record<string, string> = {
-  champion: "قهرمان (VIP)",
-  loyal: "وفادار",
-  active: "فعال",
-  new: "تازه‌وارد",
-  at_risk: "در معرض ریزش",
-  lost: "از دست‌رفته",
-  prospect: "بدون خرید",
-};
-
-export const SEGMENT_ORDER = [
-  "champion",
-  "loyal",
-  "active",
-  "new",
-  "at_risk",
-  "lost",
-  "prospect",
+export const SEGMENT_COLORS = [
+  "primary",
+  "blue",
+  "green",
+  "cyan",
+  "amber",
+  "red",
+  "gray",
 ] as const;
+export type SegmentColor = (typeof SEGMENT_COLORS)[number];
 
-/** Admin-tunable thresholds that decide which segment a customer falls into. */
-export type RfmSettings = {
+/** Key used in the counts map for customers who matched no segment rule. */
+export const UNCLASSIFIED_KEY = "unclassified";
+
+/**
+ * A customer segment. Segments live in the database rather than in code, so labels, colours
+ * and ordering all come from here — nothing about them is known at build time.
+ *
+ * A `null` bound means unbounded on that side, so a segment with every bound null is a
+ * catch-all. `systemRole` marks a segment the engine assigns directly instead of by matching
+ * rules; those cannot be deleted or re-keyed.
+ */
+export type RfmSegment = {
   id: string;
-  championMinSpent: number;
-  atRiskDays: number;
-  lostDays: number;
-  loyalMinOrders: number;
+  key: string;
+  label: string;
+  description?: string | null;
+  color: SegmentColor;
+  priority: number;
+  minR: number | null;
+  maxR: number | null;
+  minF: number | null;
+  maxF: number | null;
+  minM: number | null;
+  maxM: number | null;
+  minSpent: number | null;
+  minOrders: number | null;
+  maxDaysSincePurchase: number | null;
+  isActive: boolean;
+  systemRole?: "no_purchase" | null;
+  createdAt: string;
   updatedAt: string;
 };
 
-export type RfmSettingsInput = Partial<
-  Pick<
-    RfmSettings,
-    "championMinSpent" | "atRiskDays" | "lostDays" | "loyalMinOrders"
-  >
->;
+export type RfmSegmentInput = Partial<
+  Omit<RfmSegment, "id" | "systemRole" | "createdAt" | "updatedAt">
+> & { key?: string; label?: string };
 
 export const crmService = {
   async getCustomers(filter: CustomerFilter & { page?: number; limit?: number }) {
@@ -53,13 +63,6 @@ export const crmService = {
     return res.data.data;
   },
 
-  async getSegments() {
-    const res = await axiosInstance.get<ApiResponse<Record<string, number>>>(
-      "/crm/segments",
-    );
-    return res.data.data;
-  },
-
   async recomputeRfm() {
     const res = await axiosInstance.post<ApiResponse<{ updated: number }>>(
       "/crm/recompute-rfm",
@@ -67,17 +70,48 @@ export const crmService = {
     return res.data.data;
   },
 
-  async getRfmSettings() {
+  // ---- Segment definitions ----
+  // Every mutation recomputes on the server and reports how many customers moved, which is
+  // the only visible confirmation that a rule change did anything.
+
+  async getSegments() {
     const res =
-      await axiosInstance.get<ApiResponse<RfmSettings>>("/crm/rfm-settings");
+      await axiosInstance.get<ApiResponse<RfmSegment[]>>("/crm/segments");
     return res.data.data;
   },
 
-  /** Saving also recomputes every segment server-side, hence the `updated` count. */
-  async updateRfmSettings(input: RfmSettingsInput) {
+  async getSegmentCounts() {
+    const res = await axiosInstance.get<ApiResponse<Record<string, number>>>(
+      "/crm/segments/counts",
+    );
+    return res.data.data;
+  },
+
+  async createSegment(input: RfmSegmentInput) {
+    const res = await axiosInstance.post<
+      ApiResponse<{ segment: RfmSegment; updated: number }>
+    >("/crm/segments", input);
+    return res.data.data;
+  },
+
+  async updateSegment(id: string, input: RfmSegmentInput) {
     const res = await axiosInstance.put<
-      ApiResponse<{ settings: RfmSettings; updated: number }>
-    >("/crm/rfm-settings", input);
+      ApiResponse<{ segment: RfmSegment; updated: number }>
+    >(`/crm/segments/${id}`, input);
+    return res.data.data;
+  },
+
+  async deleteSegment(id: string) {
+    const res = await axiosInstance.delete<ApiResponse<{ updated: number }>>(
+      `/crm/segments/${id}`,
+    );
+    return res.data.data;
+  },
+
+  async reorderSegments(ids: string[]) {
+    const res = await axiosInstance.put<
+      ApiResponse<{ segments: RfmSegment[]; updated: number }>
+    >("/crm/segments/reorder", { ids });
     return res.data.data;
   },
 };

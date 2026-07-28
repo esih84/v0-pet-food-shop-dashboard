@@ -44,7 +44,7 @@ export const queryKeys = {
 
   crmCustomers: ["crm-customers"] as const,
   crmSegments: ["crm-segments"] as const,
-  crmRfmSettings: ["crm-rfm-settings"] as const,
+  crmSegmentCounts: ["crm-segment-counts"] as const,
 
   cancellationReasons: ["cancellation-reasons"] as const,
   activeCancellationReasons: ["cancellation-reasons", "active"] as const,
